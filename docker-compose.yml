@@ -1,0 +1,45 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "--password=${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  django:
+    build: .
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    volumes:
+      - media_files:/app/media
+    networks:
+      - internal
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.gestionmotos.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.gestionmotos.entrypoints=websecure"
+      - "traefik.http.routers.gestionmotos.tls.certresolver=letsencrypt"
+      - "traefik.http.services.gestionmotos.loadbalancer.server.port=8000"
+
+volumes:
+  mysql_data:
+  media_files:
+
+networks:
+  internal:
+  web:
+    external: true

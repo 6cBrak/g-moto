@@ -1,0 +1,192 @@
+import { useState } from 'react'
+import CrudPage from '../../components/CrudPage'
+import DataTable from '../../components/DataTable'
+import { useResourceList, useResourceMutations } from '../../hooks/useResource'
+import { useAuthStore } from '../../store/authStore'
+import { formatDate, formatMontant } from '../../lib/format'
+
+const STATUTS = {
+  en_stock: 'En stock',
+  vendue: 'Vendue',
+  transferee: 'Transferee',
+}
+
+function ArrivageMotosPanel({ arrivage, onClose }) {
+  const { data: motos, isLoading } = useResourceList('motos', { arrivage: arrivage.id })
+  const { data: typesMoto } = useResourceList('types-moto')
+  const { data: couleurs } = useResourceList('couleurs')
+  const { create } = useResourceMutations('motos')
+
+  const [form, setForm] = useState({ numero_serie: '', type_moto: '', couleur: '', prix_achat: '', immatriculation: '' })
+  const [error, setError] = useState(null)
+
+  const handleTypeChange = (value) => {
+    const type = (typesMoto ?? []).find((t) => String(t.id) === String(value))
+    setForm((prev) => ({ ...prev, type_moto: value, numero_serie: prev.numero_serie || type?.code || '' }))
+  }
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setError(null)
+    try {
+      await create.mutateAsync({
+        ...form,
+        arrivage: arrivage.id,
+        agence: arrivage.agence,
+      })
+      const type = (typesMoto ?? []).find((t) => String(t.id) === String(form.type_moto))
+      setForm((prev) => ({ ...prev, numero_serie: type?.code || '', immatriculation: '' }))
+    } catch (err) {
+      const data = err?.response?.data
+      const message = data
+        ? Object.entries(data).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' — ')
+        : 'Une erreur est survenue.'
+      setError(message)
+    }
+  }
+
+  return (
+    <div className="mt-6 border-t border-slate-200 pt-4">
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-lg font-semibold text-slate-800">
+          Motos de l'arrivage {arrivage.numero_bon}
+        </h2>
+        <button onClick={onClose} className="text-sm text-slate-500 hover:text-slate-800">Fermer</button>
+      </div>
+
+      <DataTable
+        isLoading={isLoading}
+        rows={motos}
+        emptyMessage="Aucune moto pour cet arrivage."
+        columns={[
+          { key: 'numero_serie', label: 'N° serie' },
+          { key: 'type_moto_label', label: 'Type' },
+          { key: 'couleur_nom', label: 'Couleur' },
+          { key: 'immatriculation', label: 'Immatriculation', render: (r) => r.immatriculation || '-' },
+          { key: 'statut', label: 'Statut', render: (r) => STATUTS[r.statut] ?? r.statut },
+        ]}
+      />
+
+      <form onSubmit={handleSubmit} className="mt-4 flex flex-wrap items-end gap-3">
+        <div>
+          <label className="block text-sm text-slate-600 mb-1">Type de moto</label>
+          <select
+            className="border border-slate-300 rounded px-3 py-2 text-sm"
+            value={form.type_moto}
+            required
+            onChange={(e) => handleTypeChange(e.target.value)}
+          >
+            <option value="">-- choisir --</option>
+            {(typesMoto ?? []).map((t) => (
+              <option key={t.id} value={t.id}>{t.marque_nom} {t.nom}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm text-slate-600 mb-1">Couleur</label>
+          <select
+            className="border border-slate-300 rounded px-3 py-2 text-sm"
+            value={form.couleur}
+            required
+            onChange={(e) => setForm((prev) => ({ ...prev, couleur: e.target.value }))}
+          >
+            <option value="">-- choisir --</option>
+            {(couleurs ?? []).map((c) => (
+              <option key={c.id} value={c.id}>{c.nom}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm text-slate-600 mb-1">Numero de serie</label>
+          <input
+            className="border border-slate-300 rounded px-3 py-2 text-sm"
+            value={form.numero_serie}
+            required
+            onChange={(e) => setForm((prev) => ({ ...prev, numero_serie: e.target.value }))}
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-slate-600 mb-1">Prix achat</label>
+          <input
+            type="number"
+            step="0.01"
+            className="border border-slate-300 rounded px-3 py-2 text-sm w-32"
+            value={form.prix_achat}
+            onChange={(e) => setForm((prev) => ({ ...prev, prix_achat: e.target.value }))}
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-slate-600 mb-1">Immatriculation</label>
+          <input
+            className="border border-slate-300 rounded px-3 py-2 text-sm"
+            value={form.immatriculation}
+            onChange={(e) => setForm((prev) => ({ ...prev, immatriculation: e.target.value }))}
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={create.isPending}
+          className="px-4 py-2 text-sm bg-slate-800 text-white rounded disabled:opacity-50"
+        >
+          + Ajouter la moto
+        </button>
+      </form>
+      {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+    </div>
+  )
+}
+
+export default function ArrivagesPage() {
+  const user = useAuthStore((state) => state.user)
+  const { data: fournisseurs } = useResourceList('fournisseurs')
+  const { data: agences } = useResourceList('agences')
+  const [selected, setSelected] = useState(null)
+
+  const fields = [
+    {
+      name: 'fournisseur',
+      label: 'Fournisseur',
+      type: 'select',
+      required: true,
+      options: (fournisseurs ?? []).map((f) => ({ value: f.id, label: f.nom })),
+    },
+    { name: 'numero_bon', label: 'Numero de bon', required: true },
+    { name: 'date_arrivage', label: 'Date arrivage', type: 'date', required: true },
+    { name: 'numero_facture', label: 'Numero facture' },
+    { name: 'montant_facture', label: 'Montant facture', type: 'number', step: '0.01' },
+    { name: 'commentaire', label: 'Commentaire', type: 'textarea' },
+  ]
+
+  if (user?.role === 'admin') {
+    fields.unshift({
+      name: 'agence',
+      label: 'Agence',
+      type: 'select',
+      required: true,
+      options: (agences ?? []).map((a) => ({ value: a.id, label: a.nom })),
+    })
+  }
+
+  return (
+    <div>
+      <CrudPage
+        resource="arrivages"
+        title="Arrivages"
+        canWrite
+        onRowClick={(row) => setSelected(row)}
+        selectedId={selected?.id}
+        columns={[
+          { key: 'numero_bon', label: 'N° bon' },
+          { key: 'agence_nom', label: 'Agence' },
+          { key: 'fournisseur_nom', label: 'Fournisseur' },
+          { key: 'date_arrivage', label: 'Date', render: (r) => formatDate(r.date_arrivage) },
+          { key: 'nb_motos', label: 'Nb motos' },
+          { key: 'montant_facture', label: 'Montant facture', render: (r) => (r.montant_facture ? `${formatMontant(r.montant_facture)} F` : '-') },
+        ]}
+        fields={fields}
+      />
+
+      {selected && <ArrivageMotosPanel arrivage={selected} onClose={() => setSelected(null)} />}
+    </div>
+  )
+}
