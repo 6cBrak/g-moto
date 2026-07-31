@@ -232,6 +232,24 @@ class SessionCaisseTests(CaisseTestBase):
         self.assertEqual(fermeture.data['montant_theorique'], '100000.00')
         self.assertEqual(fermeture.data['ecart'], '-10000.00')
 
+    def test_sortie_caisse_bloquee_si_solde_insuffisant(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.post(reverse('sortie-caisse-list'), {
+            'montant': '20000', 'motif': 'versement_banque',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_sortie_caisse_autorisee_si_solde_suffisant(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        self.client.post(reverse('versement-list'), {
+            'facture': self.facture.id, 'montant': '100000',
+            'mode_paiement': Versement.ModePaiement.ESPECES,
+        })
+        response = self.client.post(reverse('sortie-caisse-list'), {
+            'montant': '20000', 'motif': 'versement_banque',
+        })
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
     def test_sortie_caisse_bloquee_sans_session(self):
         SessionCaisse.objects.filter(agence=self.agence_a).delete()
         self.client.force_authenticate(user=self.gerant_a)
@@ -242,6 +260,7 @@ class SessionCaisseTests(CaisseTestBase):
 
     def test_sortie_caisse_apparait_dans_journal(self):
         self.client.force_authenticate(user=self.gerant_a)
+        SessionCaisse.objects.filter(agence=self.agence_a).update(montant_ouverture='100000')
         self.client.post(reverse('sortie-caisse-list'), {
             'montant': '20000', 'motif': 'versement_banque', 'description': 'Depot BICICI',
         })

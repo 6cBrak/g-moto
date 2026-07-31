@@ -15,6 +15,22 @@ def verifier_caisse_ouverte(agence):
         raise ValidationError({'detail': "La caisse du jour n'est pas ouverte pour cette agence."})
 
 
+def verifier_solde_suffisant(agence, montant):
+    """Refuse une depense/sortie qui ferait passer le solde theorique du jour sous 0."""
+    from .models import SessionCaisse
+
+    session = SessionCaisse.objects.filter(
+        agence=agence, date_session=date.today(), date_fermeture__isnull=True,
+    ).first()
+    if not session:
+        return
+    theorique = calculer_montant_theorique(session)
+    if montant > theorique:
+        raise ValidationError({
+            'montant': f"Solde de caisse insuffisant (theorique actuel : {theorique} F).",
+        })
+
+
 def calculer_montant_theorique(session):
     from depenses.models import Depense
 

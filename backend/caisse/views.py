@@ -27,7 +27,7 @@ from stock.serializers import HistoriqueMotoSerializer, MotoSerializer
 
 from .models import SessionCaisse, SortieCaisse, Versement
 from .serializers import SessionCaisseSerializer, SortieCaisseSerializer, VersementSerializer
-from .utils import verifier_caisse_ouverte
+from .utils import verifier_caisse_ouverte, verifier_solde_suffisant
 
 
 class VersementViewSet(AgenceScopedViewSet):
@@ -94,6 +94,7 @@ class SortieCaisseViewSet(AgenceScopedViewSet):
         user = self.request.user
         agence = serializer.validated_data.get('agence') if user.role == Utilisateur.Role.ADMIN else user.agence
         verifier_caisse_ouverte(agence)
+        verifier_solde_suffisant(agence, serializer.validated_data['montant'])
         if user.role == Utilisateur.Role.ADMIN:
             serializer.save(agence=agence, cree_par=user)
         else:

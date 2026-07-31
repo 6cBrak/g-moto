@@ -1,4 +1,4 @@
-from caisse.utils import verifier_caisse_ouverte
+from caisse.utils import verifier_caisse_ouverte, verifier_solde_suffisant
 from core.models import Utilisateur
 from core.utils import appliquer_periode
 from core.viewsets import AgenceScopedViewSet
@@ -25,6 +25,7 @@ class DepenseViewSet(AgenceScopedViewSet):
         user = self.request.user
         agence = serializer.validated_data.get('agence') if user.role == Utilisateur.Role.ADMIN else user.agence
         verifier_caisse_ouverte(agence)
+        verifier_solde_suffisant(agence, serializer.validated_data['montant'])
         if user.role == Utilisateur.Role.ADMIN:
             serializer.save(cree_par=user)
         else:

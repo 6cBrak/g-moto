@@ -20,7 +20,7 @@ class DepenseTests(APITestCase):
         )
         SessionCaisse.objects.create(
             agence=self.agence_a, date_session=date.today(),
-            montant_ouverture='0', ouvert_par=self.vendeur_a,
+            montant_ouverture='1000000', ouvert_par=self.vendeur_a,
         )
         Depense.objects.create(
             agence=self.agence_a, categorie=Depense.Categorie.CARBURANT, montant='15000',
@@ -47,3 +47,13 @@ class DepenseTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         depense = Depense.objects.get(id=response.data['id'])
         self.assertEqual(depense.agence, self.agence_a)
+
+    def test_depense_bloquee_si_solde_insuffisant(self):
+        SessionCaisse.objects.filter(agence=self.agence_a).update(montant_ouverture='1000')
+        self.client.force_authenticate(user=self.vendeur_a)
+        response = self.client.post(reverse('depense-list'), {
+            'categorie': Depense.Categorie.FOURNITURE,
+            'montant': '5000',
+            'date_depense': '2026-01-06',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
