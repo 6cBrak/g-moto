@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import CrudPage from '../../components/CrudPage'
 import DataTable from '../../components/DataTable'
 import FormModal from '../../components/FormModal'
@@ -14,6 +15,7 @@ const STATUTS = {
 }
 
 function ArrivageMotosPanel({ arrivage, onClose }) {
+  const queryClient = useQueryClient()
   const { data: motos, isLoading } = useResourceList('motos', { arrivage: arrivage.id })
   const { data: typesMoto } = useResourceList('types-moto')
   const { data: couleurs } = useResourceList('couleurs')
@@ -23,10 +25,14 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
   const [error, setError] = useState(null)
   const [editTarget, setEditTarget] = useState(null)
 
+  // nb_motos et montant_facture (calcule) affiches sur la ligne parente doivent se rafraichir aussi.
+  const invaliderArrivages = () => queryClient.invalidateQueries({ queryKey: ['arrivages'] })
+
   const handleDelete = async (moto) => {
     if (window.confirm(`Supprimer la moto ${moto.numero_serie} ?`)) {
       try {
         await remove.mutateAsync(moto.id)
+        invaliderArrivages()
       } catch (err) {
         setError(err?.response?.data?.detail ?? 'Une erreur est survenue.')
       }
@@ -47,6 +53,7 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
         arrivage: arrivage.id,
         agence: arrivage.agence,
       })
+      invaliderArrivages()
       const type = (typesMoto ?? []).find((t) => String(t.id) === String(form.type_moto))
       setForm((prev) => ({ ...prev, numero_serie: type?.code || '', immatriculation: '' }))
     } catch (err) {
@@ -179,7 +186,10 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
             { name: 'prix_achat', label: 'Prix achat', type: 'number', step: '0.01' },
             { name: 'immatriculation', label: 'Immatriculation' },
           ]}
-          onSubmit={(values) => update.mutateAsync({ id: editTarget.id, payload: values })}
+          onSubmit={async (values) => {
+            await update.mutateAsync({ id: editTarget.id, payload: values })
+            invaliderArrivages()
+          }}
           onClose={() => setEditTarget(null)}
         />
       )}
@@ -204,7 +214,6 @@ export default function ArrivagesPage() {
     { name: 'numero_bon', label: 'Numero de bon', required: true },
     { name: 'date_arrivage', label: 'Date arrivage', type: 'date', required: true },
     { name: 'numero_facture', label: 'Numero facture' },
-    { name: 'montant_facture', label: 'Montant facture', type: 'number', step: '0.01' },
     { name: 'commentaire', label: 'Commentaire', type: 'textarea' },
   ]
 
@@ -232,7 +241,7 @@ export default function ArrivagesPage() {
           { key: 'fournisseur_nom', label: 'Fournisseur' },
           { key: 'date_arrivage', label: 'Date', render: (r) => formatDate(r.date_arrivage) },
           { key: 'nb_motos', label: 'Nb motos' },
-          { key: 'montant_facture', label: 'Montant facture', render: (r) => (r.montant_facture ? `${formatMontant(r.montant_facture)} F` : '-') },
+          { key: 'montant_facture', label: 'Montant facture (calcule)', render: (r) => `${formatMontant(r.montant_facture)} F` },
         ]}
         fields={fields}
       />

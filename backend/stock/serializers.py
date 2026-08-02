@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+from django.db.models import Sum
 from rest_framework import serializers
 
 from core.models import Agence
@@ -10,6 +13,7 @@ class ArrivageSerializer(serializers.ModelSerializer):
     fournisseur_nom = serializers.CharField(source='fournisseur.nom', read_only=True)
     cree_par_username = serializers.CharField(source='cree_par.username', read_only=True)
     nb_motos = serializers.IntegerField(source='motos.count', read_only=True)
+    montant_facture = serializers.SerializerMethodField()
 
     class Meta:
         model = Arrivage
@@ -19,6 +23,10 @@ class ArrivageSerializer(serializers.ModelSerializer):
             'commentaire', 'cree_par', 'cree_par_username', 'date_creation', 'nb_motos',
         ]
         read_only_fields = ['id', 'cree_par', 'date_creation']
+
+    def get_montant_facture(self, obj):
+        total = obj.motos.aggregate(total=Sum('prix_achat'))['total'] or Decimal('0')
+        return str(total)
 
 
 class MotoSerializer(serializers.ModelSerializer):

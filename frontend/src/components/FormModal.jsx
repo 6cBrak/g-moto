@@ -6,7 +6,12 @@ function champVide(fields) {
 }
 
 export default function FormModal({ title, fields, initialValues, onSubmit, onClose, submitLabel = 'Enregistrer', wide = false }) {
-  const [values, setValues] = useState({ ...champVide(fields), ...initialValues })
+  const [values, setValues] = useState(() => {
+    const propres = Object.fromEntries(
+      Object.entries(initialValues ?? {}).map(([k, v]) => [k, v === null ? '' : v]),
+    )
+    return { ...champVide(fields), ...propres }
+  })
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
