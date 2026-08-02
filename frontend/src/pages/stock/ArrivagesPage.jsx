@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import CrudPage from '../../components/CrudPage'
 import DataTable from '../../components/DataTable'
+import FormModal from '../../components/FormModal'
 import { useResourceList, useResourceMutations } from '../../hooks/useResource'
 import { useAuthStore } from '../../store/authStore'
 import { formatDate, formatMontant } from '../../lib/format'
@@ -9,16 +10,28 @@ const STATUTS = {
   en_stock: 'En stock',
   vendue: 'Vendue',
   transferee: 'Transferee',
+  en_depot: 'En depot',
 }
 
 function ArrivageMotosPanel({ arrivage, onClose }) {
   const { data: motos, isLoading } = useResourceList('motos', { arrivage: arrivage.id })
   const { data: typesMoto } = useResourceList('types-moto')
   const { data: couleurs } = useResourceList('couleurs')
-  const { create } = useResourceMutations('motos')
+  const { create, update, remove } = useResourceMutations('motos')
 
   const [form, setForm] = useState({ numero_serie: '', type_moto: '', couleur: '', prix_achat: '', immatriculation: '' })
   const [error, setError] = useState(null)
+  const [editTarget, setEditTarget] = useState(null)
+
+  const handleDelete = async (moto) => {
+    if (window.confirm(`Supprimer la moto ${moto.numero_serie} ?`)) {
+      try {
+        await remove.mutateAsync(moto.id)
+      } catch (err) {
+        setError(err?.response?.data?.detail ?? 'Une erreur est survenue.')
+      }
+    }
+  }
 
   const handleTypeChange = (value) => {
     const type = (typesMoto ?? []).find((t) => String(t.id) === String(value))
@@ -65,6 +78,16 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
           { key: 'immatriculation', label: 'Immatriculation', render: (r) => r.immatriculation || '-' },
           { key: 'statut', label: 'Statut', render: (r) => STATUTS[r.statut] ?? r.statut },
         ]}
+        actions={(row) => row.statut !== 'vendue' && (
+          <>
+            <button onClick={() => setEditTarget(row)} className="text-slate-600 hover:text-slate-900 text-sm">
+              Modifier
+            </button>
+            <button onClick={() => handleDelete(row)} className="text-red-600 hover:text-red-800 text-sm">
+              Supprimer
+            </button>
+          </>
+        )}
       />
 
       <form onSubmit={handleSubmit} className="mt-4 flex flex-wrap items-end gap-3">
@@ -132,6 +155,34 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
         </button>
       </form>
       {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+
+      {editTarget && (
+        <FormModal
+          title={`Modifier ${editTarget.numero_serie}`}
+          initialValues={editTarget}
+          fields={[
+            { name: 'numero_serie', label: 'Numero de serie', required: true },
+            {
+              name: 'type_moto',
+              label: 'Type de moto',
+              type: 'select',
+              required: true,
+              options: (typesMoto ?? []).map((t) => ({ value: t.id, label: `${t.marque_nom} ${t.nom}` })),
+            },
+            {
+              name: 'couleur',
+              label: 'Couleur',
+              type: 'select',
+              required: true,
+              options: (couleurs ?? []).map((c) => ({ value: c.id, label: c.nom })),
+            },
+            { name: 'prix_achat', label: 'Prix achat', type: 'number', step: '0.01' },
+            { name: 'immatriculation', label: 'Immatriculation' },
+          ]}
+          onSubmit={(values) => update.mutateAsync({ id: editTarget.id, payload: values })}
+          onClose={() => setEditTarget(null)}
+        />
+      )}
     </div>
   )
 }

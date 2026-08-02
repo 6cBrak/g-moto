@@ -136,6 +136,38 @@ class MotoTests(StockTestBase):
         self.assertEqual(event.agence_source, self.agence_a)
         self.assertEqual(event.agence_destination, self.agence_b)
 
+    def test_peut_modifier_moto_en_stock(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.patch(
+            reverse('moto-detail', args=[self.moto_a.id]), {'immatriculation': 'AB-1234-CD'},
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.moto_a.refresh_from_db()
+        self.assertEqual(self.moto_a.immatriculation, 'AB-1234-CD')
+
+    def test_peut_supprimer_moto_en_stock(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.delete(reverse('moto-detail', args=[self.moto_a.id]))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Moto.objects.filter(id=self.moto_a.id).exists())
+
+    def test_cannot_modifier_moto_vendue(self):
+        self.moto_a.statut = Moto.Statut.VENDUE
+        self.moto_a.save()
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.patch(
+            reverse('moto-detail', args=[self.moto_a.id]), {'immatriculation': 'AB-1234-CD'},
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_cannot_supprimer_moto_vendue(self):
+        self.moto_a.statut = Moto.Statut.VENDUE
+        self.moto_a.save()
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.delete(reverse('moto-detail', args=[self.moto_a.id]))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(Moto.objects.filter(id=self.moto_a.id).exists())
+
     def test_historique_endpoint_lists_events(self):
         self.client.force_authenticate(user=self.gerant_a)
         self.client.post(

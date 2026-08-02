@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.db.models import Count, Q
+from django.db.models.deletion import ProtectedError
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -56,6 +57,24 @@ class MotoViewSet(AgenceScopedViewSet):
             agence_destination=serializer.instance.agence,
             utilisateur=self.request.user,
         )
+
+    def update(self, request, *args, **kwargs):
+        moto = self.get_object()
+        if moto.statut == Moto.Statut.VENDUE:
+            return Response({'detail': "Impossible de modifier une moto vendue."}, status=400)
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        moto = self.get_object()
+        if moto.statut == Moto.Statut.VENDUE:
+            return Response({'detail': "Impossible de supprimer une moto vendue."}, status=400)
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            return Response(
+                {'detail': "Cette moto est liee a d'autres enregistrements (depot, historique) et ne peut pas etre supprimee."},
+                status=400,
+            )
 
     @action(detail=True, methods=['get'])
     def historique(self, request, pk=None):
