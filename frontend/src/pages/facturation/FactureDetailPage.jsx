@@ -65,7 +65,7 @@ function RetraitModal({ resource, item, onClose, onDone }) {
   )
 }
 
-function UploadFichier({ resource, id, onDone }) {
+function UploadFichier({ resource, id, onDone, label = 'Uploader le scan' }) {
   const [file, setFile] = useState(null)
   const [erreur, setErreur] = useState(null)
   const mutation = useMutation({
@@ -92,7 +92,7 @@ function UploadFichier({ resource, id, onDone }) {
           onClick={() => mutation.mutate()}
           className="text-xs text-slate-600 hover:text-slate-900 underline disabled:opacity-50 disabled:no-underline"
         >
-          Uploader le scan
+          {label}
         </button>
       </div>
       {erreur && <p className="text-red-600 text-xs mt-1">{erreur}</p>}
@@ -114,7 +114,7 @@ export default function FactureDetailPage() {
   const { data: quittances } = useResourceList('quittances', { facture: id })
 
   const { create: creerVersement } = useResourceMutations('versements')
-  const { create: creerCarteGrise } = useResourceMutations('cartes-grises')
+  const { create: creerCarteGrise, update: modifierCarteGrise } = useResourceMutations('cartes-grises')
   const { create: creerQuittance } = useResourceMutations('quittances')
 
   const [modal, setModal] = useState(null)
@@ -230,6 +230,9 @@ export default function FactureDetailPage() {
               }`}>
                 {carteGrise.retiree ? 'Retiree' : carteGrise.recue ? 'Recue' : 'En attente'}
               </span>
+              <button onClick={() => setModal('carte_grise_edit')} className="text-slate-600 hover:text-slate-900 underline">
+                Modifier
+              </button>
               {!carteGrise.recue && (
                 <button onClick={() => marquerRecue(carteGrise.id)} className="text-slate-600 hover:text-slate-900 underline">
                   Marquer recue
@@ -246,13 +249,20 @@ export default function FactureDetailPage() {
                 Retiree le {formatDateTime(carteGrise.date_retrait)} par {carteGrise.retirer_nom || '-'} ({carteGrise.retirer_telephone || '-'})
               </p>
             )}
-            {carteGrise.fichier ? (
-              <a href={carteGrise.fichier} target="_blank" rel="noreferrer" className="text-xs text-slate-600 hover:text-slate-900 underline">
+            {carteGrise.commentaire && (
+              <p className="text-xs text-slate-500">{carteGrise.commentaire}</p>
+            )}
+            {carteGrise.fichier && (
+              <a href={carteGrise.fichier} target="_blank" rel="noreferrer" className="text-xs text-slate-600 hover:text-slate-900 underline block">
                 Voir le fichier scanne
               </a>
-            ) : (
-              <UploadFichier resource="cartes-grises" id={carteGrise.id} onDone={invalider} />
             )}
+            <UploadFichier
+              resource="cartes-grises"
+              id={carteGrise.id}
+              label={carteGrise.fichier ? 'Remplacer le scan' : 'Uploader le scan'}
+              onDone={invalider}
+            />
             {erreurRecue && <p className="text-red-600 text-xs">{erreurRecue}</p>}
           </div>
         ) : (
@@ -314,6 +324,22 @@ export default function FactureDetailPage() {
           fields={[{ name: 'numero_dossier', label: 'Numero de dossier' }]}
           onSubmit={async (values) => {
             await creerCarteGrise.mutateAsync({ ...values, facture: id })
+            invalider()
+          }}
+          onClose={() => setModal(null)}
+        />
+      )}
+
+      {modal === 'carte_grise_edit' && (
+        <FormModal
+          title="Modifier le dossier carte grise"
+          initialValues={carteGrise}
+          fields={[
+            { name: 'numero_dossier', label: 'Numero de dossier' },
+            { name: 'commentaire', label: 'Commentaire', type: 'textarea' },
+          ]}
+          onSubmit={async (values) => {
+            await modifierCarteGrise.mutateAsync({ id: carteGrise.id, payload: values })
             invalider()
           }}
           onClose={() => setModal(null)}
