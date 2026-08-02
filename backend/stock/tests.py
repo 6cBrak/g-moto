@@ -216,3 +216,16 @@ class StockVueEnsembleTests(StockTestBase):
         self.client.force_authenticate(user=self.gerant_a)
         response = self.client.get(reverse('stock-alertes'))
         self.assertEqual(len(response.data), 0)
+
+    def test_alerte_pas_dupliquee_avec_plusieurs_motos_du_meme_type(self):
+        # Plusieurs motos du meme type/agence (toujours sous le seuil de 3) ne doivent
+        # produire qu'UNE seule ligne d'alerte, pas une par moto.
+        Moto.objects.create(
+            numero_serie='SN-A-0002', type_moto=self.type_moto, couleur=self.couleur,
+            arrivage=self.arrivage_a, agence=self.agence_a,
+        )
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.get(reverse('stock-alertes'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['quantite_stock'], 2)

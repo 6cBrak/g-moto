@@ -197,7 +197,7 @@ class StockAlertesView(APIView):
             for row in en_stock.values('agence_id', 'type_moto_id').annotate(quantite=Count('id'))
         }
 
-        combos = Moto.objects.values(
+        combos = Moto.objects.order_by().values(
             'agence_id', 'agence__nom', 'type_moto_id', 'type_moto__nom', 'type_moto__seuil_alerte',
         ).distinct()
         if agence_id:
