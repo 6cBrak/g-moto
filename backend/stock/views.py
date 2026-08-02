@@ -1,12 +1,19 @@
+from io import BytesIO
+
 from django.db import transaction
 from django.db.models import Count, Q
 from django.db.models.deletion import ProtectedError
+from django.http import FileResponse
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from reportlab.pdfgen import canvas
 
 from core.models import Utilisateur
+from core.pdf_utils import dessiner_entete
 from core.permissions import IsAdminOrGerant
 from core.utils import appliquer_periode, resolve_agence_filter
 from core.viewsets import AgenceScopedViewSet
@@ -30,6 +37,51 @@ class ArrivageViewSet(AgenceScopedViewSet):
             serializer.save(cree_par=user)
         else:
             serializer.save(agence=user.agence, cree_par=user)
+
+    @action(detail=True, methods=['get'], url_path='pdf')
+    def pdf(self, request, pk=None):
+        arrivage = self.get_object()
+        buffer = BytesIO()
+        doc = canvas.Canvas(buffer, pagesize=A4)
+        width, height = A4
+
+        y = dessiner_entete(doc, arrivage.agence, height - 25 * mm, width)
+        doc.setFont('Helvetica-Bold', 16)
+        doc.drawString(20 * mm, y, f"Liste des motos - Arrivage {arrivage.numero_bon}")
+        y -= 10 * mm
+
+        doc.setFont('Helvetica', 11)
+        for ligne in [
+            f"Fournisseur : {arrivage.fournisseur.nom}",
+            f"Date d'arrivage : {arrivage.date_arrivage.strftime('%d/%m/%Y')}",
+            f"Nombre de motos : {arrivage.motos.count()}",
+        ]:
+            doc.drawString(20 * mm, y, ligne)
+            y -= 6 * mm
+        if arrivage.commentaire:
+            doc.drawString(20 * mm, y, f"Commentaire : {arrivage.commentaire[:80]}")
+            y -= 6 * mm
+        y -= 6 * mm
+
+        doc.setFont('Helvetica-Bold', 10)
+        doc.drawString(20 * mm, y, 'N° de serie')
+        y -= 6 * mm
+        doc.setFont('Helvetica', 10)
+
+        for moto in arrivage.motos.order_by('numero_serie'):
+            if y < 20 * mm:
+                doc.showPage()
+                y = height - 25 * mm
+                doc.setFont('Helvetica', 10)
+            doc.drawString(20 * mm, y, moto.numero_serie)
+            y -= 6 * mm
+
+        doc.showPage()
+        doc.save()
+        buffer.seek(0)
+        return FileResponse(
+            buffer, as_attachment=False, filename=f"motos-arrivage-{arrivage.numero_bon}.pdf",
+        )
 
 
 class MotoViewSet(AgenceScopedViewSet):

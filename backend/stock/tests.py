@@ -84,6 +84,12 @@ class ArrivageTests(StockTestBase):
         response = self.client.delete(reverse('arrivage-detail', args=[self.arrivage_a.id]))
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_arrivage_pdf_endpoint_returns_pdf(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.get(reverse('arrivage-pdf', args=[self.arrivage_a.id]))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+
 
 class MotoTests(StockTestBase):
     def test_numero_serie_must_be_unique(self):

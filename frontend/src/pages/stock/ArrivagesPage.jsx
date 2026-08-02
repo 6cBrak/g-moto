@@ -6,6 +6,7 @@ import FormModal from '../../components/FormModal'
 import { useResourceList, useResourceMutations } from '../../hooks/useResource'
 import { useAuthStore } from '../../store/authStore'
 import { formatDate, formatMontant } from '../../lib/format'
+import { ouvrirPdf } from '../../lib/pdf'
 
 const STATUTS = {
   en_stock: 'En stock',
@@ -71,7 +72,12 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
         <h2 className="text-lg font-semibold text-slate-800">
           Motos de l'arrivage {arrivage.numero_bon}
         </h2>
-        <button onClick={onClose} className="text-sm text-slate-500 hover:text-slate-800">Fermer</button>
+        <div className="flex items-center gap-3">
+          <button onClick={() => ouvrirPdf(`/arrivages/${arrivage.id}/pdf/`)} className="text-sm text-slate-600 hover:text-slate-900 underline">
+            Imprimer la liste
+          </button>
+          <button onClick={onClose} className="text-sm text-slate-500 hover:text-slate-800">Fermer</button>
+        </div>
       </div>
 
       <DataTable

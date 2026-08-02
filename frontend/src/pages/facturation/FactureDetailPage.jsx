@@ -220,50 +220,79 @@ export default function FactureDetailPage() {
       <div>
         <h2 className="text-sm font-medium text-slate-700 mb-2">Carte grise</h2>
         {carteGrise ? (
-          <div className="text-sm text-slate-700 space-y-2">
-            <div className="flex items-center gap-3">
-              <span>Dossier {carteGrise.numero_dossier || '-'}</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                carteGrise.retiree ? 'bg-green-100 text-green-700'
-                  : carteGrise.recue ? 'bg-blue-100 text-blue-700'
-                    : 'bg-slate-100 text-slate-600'
-              }`}>
-                {carteGrise.retiree ? 'Retiree' : carteGrise.recue ? 'Recue' : 'En attente'}
-              </span>
-              <button onClick={() => setModal('carte_grise_edit')} className="text-slate-600 hover:text-slate-900 underline">
-                Modifier
-              </button>
-              {!carteGrise.recue && (
-                <button onClick={() => marquerRecue(carteGrise.id)} className="text-slate-600 hover:text-slate-900 underline">
-                  Marquer recue
+          <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="text-base font-semibold text-slate-800">
+                  Dossier {carteGrise.numero_dossier || '-'}
+                </span>
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                  carteGrise.retiree ? 'bg-green-100 text-green-700'
+                    : carteGrise.recue ? 'bg-blue-100 text-blue-700'
+                      : 'bg-amber-100 text-amber-700'
+                }`}>
+                  {carteGrise.retiree ? 'Retiree' : carteGrise.recue ? 'Recue' : 'En attente'}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setModal('carte_grise_edit')}
+                  className="px-3 py-1.5 text-xs border border-slate-300 rounded hover:bg-white"
+                >
+                  Modifier
                 </button>
-              )}
-              {!carteGrise.retiree && (
-                <button onClick={() => setRetraitTarget({ resource: 'cartes-grises', item: carteGrise })} className="text-slate-600 hover:text-slate-900 underline">
-                  Marquer retiree
-                </button>
-              )}
+                {!carteGrise.recue && (
+                  <button
+                    onClick={() => marquerRecue(carteGrise.id)}
+                    className="px-3 py-1.5 text-xs border border-slate-300 rounded hover:bg-white"
+                  >
+                    Marquer recue
+                  </button>
+                )}
+                {!carteGrise.retiree && (
+                  <button
+                    onClick={() => setRetraitTarget({ resource: 'cartes-grises', item: carteGrise })}
+                    className="px-3 py-1.5 text-xs bg-slate-800 text-white rounded hover:bg-slate-700"
+                  >
+                    Marquer retiree
+                  </button>
+                )}
+              </div>
             </div>
+
             {carteGrise.retiree && (
-              <p className="text-xs text-slate-500">
-                Retiree le {formatDateTime(carteGrise.date_retrait)} par {carteGrise.retirer_nom || '-'} ({carteGrise.retirer_telephone || '-'})
-              </p>
+              <div className="mt-3 text-xs text-slate-600 bg-white border border-slate-200 rounded px-3 py-2">
+                Retiree le <span className="font-medium text-slate-800">{formatDateTime(carteGrise.date_retrait)}</span>
+                {' '}par <span className="font-medium text-slate-800">{carteGrise.retirer_nom || '-'}</span>
+                {' '}({carteGrise.retirer_telephone || '-'})
+              </div>
             )}
+
             {carteGrise.commentaire && (
-              <p className="text-xs text-slate-500">{carteGrise.commentaire}</p>
+              <p className="mt-3 text-xs text-slate-500 italic">{carteGrise.commentaire}</p>
             )}
-            {carteGrise.fichier && (
-              <a href={carteGrise.fichier} target="_blank" rel="noreferrer" className="text-xs text-slate-600 hover:text-slate-900 underline block">
-                Voir le fichier scanne
-              </a>
-            )}
-            <UploadFichier
-              resource="cartes-grises"
-              id={carteGrise.id}
-              label={carteGrise.fichier ? 'Remplacer le scan' : 'Uploader le scan'}
-              onDone={invalider}
-            />
-            {erreurRecue && <p className="text-red-600 text-xs">{erreurRecue}</p>}
+
+            <div className="mt-4 pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+              {carteGrise.fichier ? (
+                <a
+                  href={carteGrise.fichier}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-slate-600 hover:text-slate-900 underline"
+                >
+                  Voir le fichier scanne
+                </a>
+              ) : (
+                <span className="text-xs text-slate-400">Aucun fichier scanne</span>
+              )}
+              <UploadFichier
+                resource="cartes-grises"
+                id={carteGrise.id}
+                label={carteGrise.fichier ? 'Remplacer le scan' : 'Uploader le scan'}
+                onDone={invalider}
+              />
+            </div>
+            {erreurRecue && <p className="text-red-600 text-xs mt-2">{erreurRecue}</p>}
           </div>
         ) : (
           <button onClick={() => setModal('carte_grise')} className="text-sm text-slate-600 hover:text-slate-900 underline">
