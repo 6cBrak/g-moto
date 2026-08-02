@@ -34,7 +34,7 @@ export default function FacturesListPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
         <h1 className="text-xl font-semibold text-slate-800">Factures</h1>
         <Link to="/factures/nouvelle" className="px-4 py-2 text-sm bg-slate-800 text-white rounded">
           + Nouvelle facture

@@ -155,7 +155,7 @@ export default function MotosPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
         <h1 className="text-xl font-semibold text-slate-800">Motos</h1>
         <button onClick={() => setShowCreate(true)} className="px-4 py-2 text-sm bg-slate-800 text-white rounded">
           + Nouvelle moto

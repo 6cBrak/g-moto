@@ -8,16 +8,16 @@ export default function DataTable({ columns, rows, isLoading, emptyMessage = 'Au
   }
 
   return (
-    <div className="overflow-x-auto border border-slate-200 rounded-lg">
+    <div className="overflow-x-auto -mx-3 sm:mx-0 border-y sm:border border-slate-200 sm:rounded-lg">
       <table className="min-w-full divide-y divide-slate-200 text-sm">
         <thead className="bg-slate-50">
           <tr>
             {columns.map((col) => (
-              <th key={col.key} className="px-4 py-2 text-left font-medium text-slate-600">
+              <th key={col.key} className="px-3 sm:px-4 py-2 text-left font-medium text-slate-600 whitespace-nowrap">
                 {col.label}
               </th>
             ))}
-            {actions && <th className="px-4 py-2 text-right font-medium text-slate-600">Actions</th>}
+            {actions && <th className="px-3 sm:px-4 py-2 text-right font-medium text-slate-600 whitespace-nowrap">Actions</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 bg-white">
@@ -28,13 +28,13 @@ export default function DataTable({ columns, rows, isLoading, emptyMessage = 'Au
               className={`hover:bg-slate-50 ${onRowClick ? 'cursor-pointer' : ''} ${selectedId != null && row.id === selectedId ? 'bg-slate-100' : ''} ${rowClassName ? rowClassName(row) : ''}`}
             >
               {columns.map((col) => (
-                <td key={col.key} className="px-4 py-2 text-slate-700">
+                <td key={col.key} className="px-3 sm:px-4 py-2 text-slate-700 whitespace-nowrap">
                   {col.render ? col.render(row) : (row[col.key] ?? '-')}
                 </td>
               ))}
               {actions && (
                 <td
-                  className="px-4 py-2 text-right space-x-2 whitespace-nowrap"
+                  className="px-3 sm:px-4 py-2 text-right space-x-2 whitespace-nowrap"
                   onClick={onRowClick ? (e) => e.stopPropagation() : undefined}
                 >
                   {actions(row)}

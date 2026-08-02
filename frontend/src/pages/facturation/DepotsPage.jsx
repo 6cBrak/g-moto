@@ -22,7 +22,7 @@ function EnvoiDepotPanel({ envoi, onClose }) {
 
   return (
     <div className="mt-6 border-t border-slate-200 pt-4">
-      <div className="flex justify-between items-center mb-3">
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-3">
         <h2 className="text-lg font-semibold text-slate-800">
           Depot chez {envoi.client_nom} du {formatDateTime(envoi.date_envoi)}
         </h2>
@@ -105,7 +105,7 @@ export default function DepotsPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
         <h1 className="text-xl font-semibold text-slate-800">Depots revendeurs</h1>
         <button onClick={() => setShowCreate((v) => !v)} className="px-4 py-2 text-sm bg-slate-800 text-white rounded">
           + Envoyer en depot
@@ -118,7 +118,7 @@ export default function DepotsPage() {
 
       {showCreate && (
         <form onSubmit={handleSubmit} className="border border-slate-200 rounded p-4 mb-6 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm text-slate-600 mb-1">Client</label>
               <select

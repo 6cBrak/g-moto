@@ -166,8 +166,8 @@ export default function FactureCreatePage() {
           <div className="space-y-3">
             {lignes.map((ligne, index) => (
               <div key={index} className="border border-slate-200 rounded p-3 space-y-2">
-                <div className="grid grid-cols-12 gap-2 items-end">
-                  <div className="col-span-2">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:items-end">
+                  <div className="sm:col-span-2">
                     <label className="block text-xs text-slate-500 mb-1">Type</label>
                     <select
                       className="w-full border border-slate-300 rounded px-2 py-1 text-sm"
@@ -180,7 +180,7 @@ export default function FactureCreatePage() {
                     </select>
                   </div>
 
-                  <div className="col-span-4">
+                  <div className="sm:col-span-4">
                     <label className="block text-xs text-slate-500 mb-1">
                       {ligne.type === 'moto' ? 'Type de moto' : 'Article'}
                     </label>
@@ -219,7 +219,7 @@ export default function FactureCreatePage() {
                     )}
                   </div>
 
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <label className="block text-xs text-slate-500 mb-1">Quantite</label>
                     <input
                       type="number"
@@ -232,7 +232,7 @@ export default function FactureCreatePage() {
                     />
                   </div>
 
-                  <div className="col-span-3">
+                  <div className="sm:col-span-3">
                     <label className="block text-xs text-slate-500 mb-1">Prix unitaire</label>
                     <input
                       type="number"
@@ -244,17 +244,18 @@ export default function FactureCreatePage() {
                     />
                   </div>
 
-                  <div className="col-span-1 text-right">
+                  <div className="sm:col-span-1 text-right">
                     {lignes.length > 1 && (
                       <button type="button" onClick={() => supprimerLigne(index)} className="text-red-600 text-sm">
-                        &times;
+                        <span className="sm:hidden">Retirer cette ligne</span>
+                        <span className="hidden sm:inline">&times;</span>
                       </button>
                     )}
                   </div>
                 </div>
 
                 {ligne.type === 'moto' && ligne.type_moto && (
-                  <div className="grid grid-cols-4 gap-2 pl-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pl-1">
                     {ligne.series.map((serieId, slot) => {
                       const exclus = motosExclues(index, slot)
                       const options = motosDisponibles.filter((m) => (

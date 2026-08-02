@@ -76,12 +76,17 @@ export default function AppLayout() {
     const actif = groupeActif(location.pathname)
     return actif ? new Set([actif]) : new Set()
   })
+  const [sidebarOuverte, setSidebarOuverte] = useState(false)
 
   useEffect(() => {
     const actif = groupeActif(location.pathname)
     if (actif) {
       setOpenGroups((prev) => (prev.has(actif) ? prev : new Set(prev).add(actif)))
     }
+  }, [location.pathname])
+
+  useEffect(() => {
+    setSidebarOuverte(false)
   }, [location.pathname])
 
   const toggleGroup = (label) => {
@@ -101,9 +106,31 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen flex bg-slate-50">
-      <aside className="w-64 bg-slate-900 text-slate-200 flex flex-col shrink-0">
-        <div className="px-4 py-4 text-lg font-semibold text-white border-b border-slate-800">
-          Gestion Motos
+      {sidebarOuverte && (
+        <button
+          type="button"
+          aria-label="Fermer le menu"
+          onClick={() => setSidebarOuverte(false)}
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-slate-200 flex flex-col shrink-0
+          transform transition-transform duration-200 ease-in-out
+          ${sidebarOuverte ? 'translate-x-0' : '-translate-x-full'}
+          md:relative md:translate-x-0 md:z-auto`}
+      >
+        <div className="px-4 py-4 flex items-center justify-between border-b border-slate-800">
+          <span className="text-lg font-semibold text-white">Gestion Motos</span>
+          <button
+            type="button"
+            aria-label="Fermer le menu"
+            onClick={() => setSidebarOuverte(false)}
+            className="text-slate-400 hover:text-white text-xl leading-none md:hidden"
+          >
+            ×
+          </button>
         </div>
         <nav className="flex-1 overflow-y-auto py-2">
           {navGroups.map((entry) => {
@@ -142,15 +169,29 @@ export default function AppLayout() {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between">
-          <div className="text-sm text-slate-600">
-            {user?.username} — <span className="font-medium">{user?.role}</span>
-            {user?.agence_nom && <span> — {user.agence_nom}</span>}
+        <header className="bg-white border-b border-slate-200 px-3 sm:px-6 py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              aria-label="Ouvrir le menu"
+              onClick={() => setSidebarOuverte(true)}
+              className="text-slate-600 hover:text-slate-900 md:hidden shrink-0"
+            >
+              <span className="block w-6 space-y-1">
+                <span className="block h-0.5 bg-current" />
+                <span className="block h-0.5 bg-current" />
+                <span className="block h-0.5 bg-current" />
+              </span>
+            </button>
+            <div className="text-sm text-slate-600 truncate">
+              {user?.username} — <span className="font-medium">{user?.role}</span>
+              {user?.agence_nom && <span> — {user.agence_nom}</span>}
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {user?.role === 'admin' && (
               <select
-                className="border border-slate-300 rounded px-2 py-1 text-sm"
+                className="border border-slate-300 rounded px-1.5 sm:px-2 py-1 text-xs sm:text-sm max-w-[7.5rem] sm:max-w-none"
                 value={agenceFiltre ?? ''}
                 onChange={(e) => setAgenceFiltre(e.target.value || null)}
               >
@@ -160,12 +201,12 @@ export default function AppLayout() {
                 ))}
               </select>
             )}
-            <button onClick={logout} className="text-sm text-slate-600 hover:text-slate-900 underline">
+            <button onClick={logout} className="text-sm text-slate-600 hover:text-slate-900 underline whitespace-nowrap">
               Deconnexion
             </button>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-6">
           <Outlet />
         </main>
       </div>

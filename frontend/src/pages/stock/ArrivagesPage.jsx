@@ -103,11 +103,11 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
         )}
       />
 
-      <form onSubmit={handleSubmit} className="mt-4 flex flex-wrap items-end gap-3">
-        <div>
+      <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-3">
+        <div className="col-span-2 sm:col-span-1">
           <label className="block text-sm text-slate-600 mb-1">Type de moto</label>
           <select
-            className="border border-slate-300 rounded px-3 py-2 text-sm"
+            className="w-full sm:w-auto border border-slate-300 rounded px-3 py-2 text-sm"
             value={form.type_moto}
             required
             onChange={(e) => handleTypeChange(e.target.value)}
@@ -121,7 +121,7 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
         <div>
           <label className="block text-sm text-slate-600 mb-1">Couleur</label>
           <select
-            className="border border-slate-300 rounded px-3 py-2 text-sm"
+            className="w-full sm:w-auto border border-slate-300 rounded px-3 py-2 text-sm"
             value={form.couleur}
             required
             onChange={(e) => setForm((prev) => ({ ...prev, couleur: e.target.value }))}
@@ -135,7 +135,7 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
         <div>
           <label className="block text-sm text-slate-600 mb-1">Numero de serie</label>
           <input
-            className="border border-slate-300 rounded px-3 py-2 text-sm"
+            className="w-full sm:w-auto border border-slate-300 rounded px-3 py-2 text-sm"
             value={form.numero_serie}
             required
             onChange={(e) => setForm((prev) => ({ ...prev, numero_serie: e.target.value }))}
@@ -146,7 +146,7 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
           <input
             type="number"
             step="0.01"
-            className="border border-slate-300 rounded px-3 py-2 text-sm w-32"
+            className="w-full sm:w-32 border border-slate-300 rounded px-3 py-2 text-sm"
             value={form.prix_achat}
             onChange={(e) => setForm((prev) => ({ ...prev, prix_achat: e.target.value }))}
           />
@@ -154,7 +154,7 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
         <div>
           <label className="block text-sm text-slate-600 mb-1">Immatriculation</label>
           <input
-            className="border border-slate-300 rounded px-3 py-2 text-sm"
+            className="w-full sm:w-auto border border-slate-300 rounded px-3 py-2 text-sm"
             value={form.immatriculation}
             onChange={(e) => setForm((prev) => ({ ...prev, immatriculation: e.target.value }))}
           />
@@ -162,7 +162,7 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
         <button
           type="submit"
           disabled={create.isPending}
-          className="px-4 py-2 text-sm bg-slate-800 text-white rounded disabled:opacity-50"
+          className="col-span-2 sm:col-span-1 px-4 py-2 text-sm bg-slate-800 text-white rounded disabled:opacity-50"
         >
           + Ajouter la moto
         </button>
@@ -220,6 +220,7 @@ export default function ArrivagesPage() {
     { name: 'numero_bon', label: 'Numero de bon', required: true },
     { name: 'date_arrivage', label: 'Date arrivage', type: 'date', required: true },
     { name: 'numero_facture', label: 'Numero facture' },
+    { name: 'fichier_cmc', label: 'Fichier CMC scanne', type: 'file' },
     { name: 'commentaire', label: 'Commentaire', type: 'textarea' },
   ]
 

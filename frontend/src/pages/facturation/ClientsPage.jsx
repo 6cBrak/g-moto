@@ -161,9 +161,9 @@ export default function ClientsPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
         <h1 className="text-xl font-semibold text-slate-800">Clients</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <select value={segment} onChange={(e) => setSegment(e.target.value)} className="border border-slate-300 rounded px-2 py-1 text-sm">
             <option value="">Tous les segments</option>
             {SEGMENTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}

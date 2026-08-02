@@ -146,7 +146,7 @@ export default function FactureDetailPage() {
 
   return (
     <div className="max-w-4xl space-y-8">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-wrap justify-between items-start gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-semibold text-slate-800">{facture.numero_facture}</h1>
@@ -159,7 +159,7 @@ export default function FactureDetailPage() {
           </p>
           {facture.remarque && <p className="text-slate-600 text-sm mt-1">{facture.remarque}</p>}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button onClick={() => ouvrirPdf(`/factures/${id}/pdf/`)} className="px-3 py-2 text-sm border border-slate-300 rounded">
             Facture PDF
           </button>
@@ -180,6 +180,13 @@ export default function FactureDetailPage() {
             { key: 'quantite', label: 'Qte' },
             { key: 'prix_unitaire', label: 'PU', render: (r) => `${formatMontant(r.prix_unitaire)} F` },
             { key: 'montant', label: 'Montant', render: (r) => `${formatMontant(r.montant)} F` },
+            {
+              key: 'arrivage_fichier_cmc',
+              label: 'CMC',
+              render: (r) => (r.arrivage_fichier_cmc
+                ? <a href={r.arrivage_fichier_cmc} target="_blank" rel="noreferrer" className="text-slate-600 hover:text-slate-900 underline">Voir le CMC</a>
+                : '-'),
+            },
           ]}
         />
         <div className="text-right mt-2 space-y-1">
