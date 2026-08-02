@@ -7,7 +7,7 @@ from rest_framework.test import APITestCase
 from caisse.models import Versement
 from catalogue.models import Couleur, Fournisseur, Marque, TypeMoto
 from core.models import Agence, Utilisateur
-from depenses.models import Depense
+from depenses.models import CategorieDepense, Depense
 from facturation.models import Client, Facture
 from stock.models import Arrivage, Moto
 
@@ -50,8 +50,9 @@ class DashboardTestBase(APITestCase):
         }, format='json')
         self.facture = Facture.objects.get(id=creation.data['id'])
 
+        categorie_carburant, _ = CategorieDepense.objects.get_or_create(nom='Carburant')
         Depense.objects.create(
-            agence=self.agence_a, categorie=Depense.Categorie.CARBURANT, montant='50000',
+            agence=self.agence_a, categorie=categorie_carburant, montant='50000',
             date_depense=date.today().isoformat(), cree_par=self.gerant_a,
         )
         Versement.objects.create(

@@ -4,18 +4,22 @@ from django.db import models
 from core.models import Agence
 
 
-class Depense(models.Model):
-    class Categorie(models.TextChoices):
-        LOYER = 'loyer', 'Loyer'
-        SALAIRE = 'salaire', 'Salaire'
-        CARBURANT = 'carburant', 'Carburant'
-        ENTRETIEN = 'entretien', 'Entretien'
-        FOURNITURE = 'fourniture', 'Fourniture'
-        TRANSPORT = 'transport', 'Transport'
-        AUTRE = 'autre', 'Autre'
+class CategorieDepense(models.Model):
+    nom = models.CharField(max_length=100, unique=True)
+    actif = models.BooleanField(default=True)
 
+    class Meta:
+        ordering = ['nom']
+        verbose_name = 'Categorie de depense'
+        verbose_name_plural = 'Categories de depense'
+
+    def __str__(self):
+        return self.nom
+
+
+class Depense(models.Model):
     agence = models.ForeignKey(Agence, on_delete=models.PROTECT, related_name='depenses')
-    categorie = models.CharField(max_length=20, choices=Categorie.choices)
+    categorie = models.ForeignKey(CategorieDepense, on_delete=models.PROTECT, related_name='depenses')
     montant = models.DecimalField(max_digits=12, decimal_places=2)
     description = models.CharField(max_length=255, blank=True)
     justificatif = models.FileField(upload_to='justificatifs_depenses/', null=True, blank=True)
@@ -29,4 +33,4 @@ class Depense(models.Model):
         ordering = ['-date_depense']
 
     def __str__(self):
-        return f"{self.get_categorie_display()} - {self.montant} ({self.agence.nom})"
+        return f"{self.categorie.nom} - {self.montant} ({self.agence.nom})"

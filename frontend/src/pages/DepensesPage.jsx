@@ -5,23 +5,20 @@ import { useResourceList } from '../hooks/useResource'
 import { useAuthStore } from '../store/authStore'
 import { formatMontant, formatDate } from '../lib/format'
 
-const CATEGORIES = [
-  { value: 'loyer', label: 'Loyer' },
-  { value: 'salaire', label: 'Salaire' },
-  { value: 'carburant', label: 'Carburant' },
-  { value: 'entretien', label: 'Entretien' },
-  { value: 'fourniture', label: 'Fourniture' },
-  { value: 'transport', label: 'Transport' },
-  { value: 'autre', label: 'Autre' },
-]
-
 export default function DepensesPage() {
   const user = useAuthStore((state) => state.user)
   const { data: agences } = useResourceList('agences', {}, { enabled: user?.role === 'admin' })
+  const { data: categories } = useResourceList('categories-depense')
   const [filtres, setFiltres] = useState({})
+  const [showCategories, setShowCategories] = useState(false)
+
+  const canWrite = user?.role === 'admin' || user?.role === 'gerant'
+  const categorieOptions = (categories ?? [])
+    .filter((c) => c.actif)
+    .map((c) => ({ value: c.id, label: c.nom }))
 
   const fields = [
-    { name: 'categorie', label: 'Categorie', type: 'select', required: true, options: CATEGORIES },
+    { name: 'categorie', label: 'Categorie', type: 'select', required: true, options: categorieOptions },
     { name: 'montant', label: 'Montant', type: 'number', step: '0.01', required: true },
     { name: 'date_depense', label: 'Date', type: 'date', required: true },
     { name: 'description', label: 'Description' },
@@ -42,7 +39,7 @@ export default function DepensesPage() {
     { name: 'q', label: 'Recherche', placeholder: 'Description' },
     { name: 'date_debut', label: 'Du', type: 'date' },
     { name: 'date_fin', label: 'Au', type: 'date' },
-    { name: 'categorie', label: 'Categorie', type: 'select', options: CATEGORIES },
+    { name: 'categorie', label: 'Categorie', type: 'select', options: categorieOptions },
     ...(user?.role === 'admin' ? [{
       name: 'agence',
       label: 'Agence',
@@ -53,25 +50,54 @@ export default function DepensesPage() {
   const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v))
 
   return (
-    <CrudPage
-      resource="depenses"
-      title="Depenses"
-      extraParams={params}
-      filterBar={(
-        <FilterBar
-          filters={filterFields}
-          values={filtres}
-          onChange={(name, value) => setFiltres((prev) => ({ ...prev, [name]: value }))}
-        />
+    <div>
+      <div className="flex justify-end mb-3">
+        <button
+          onClick={() => setShowCategories((v) => !v)}
+          className="text-sm text-slate-600 hover:text-slate-900 underline"
+        >
+          {showCategories ? 'Fermer la gestion des categories' : 'Gerer les categories'}
+        </button>
+      </div>
+
+      {showCategories && (
+        <div className="mb-8 border border-slate-200 rounded-lg p-4">
+          <CrudPage
+            resource="categories-depense"
+            title="Categories de depense"
+            canWrite={canWrite}
+            columns={[
+              { key: 'nom', label: 'Nom' },
+              { key: 'actif', label: 'Actif', render: (r) => (r.actif ? 'Oui' : 'Non') },
+            ]}
+            fields={[
+              { name: 'nom', label: 'Nom', required: true },
+              { name: 'actif', label: 'Actif', type: 'checkbox' },
+            ]}
+          />
+        </div>
       )}
-      columns={[
-        { key: 'date_depense', label: 'Date', render: (r) => formatDate(r.date_depense) },
-        { key: 'categorie', label: 'Categorie' },
-        { key: 'montant', label: 'Montant', render: (r) => `${formatMontant(r.montant)} F` },
-        { key: 'description', label: 'Description' },
-        { key: 'agence_nom', label: 'Agence' },
-      ]}
-      fields={fields}
-    />
+
+      <CrudPage
+        resource="depenses"
+        title="Depenses"
+        extraParams={params}
+        filterBar={(
+          <FilterBar
+            filters={filterFields}
+            values={filtres}
+            onChange={(name, value) => setFiltres((prev) => ({ ...prev, [name]: value }))}
+          />
+        )}
+        columns={[
+          { key: 'date_depense', label: 'Date', render: (r) => formatDate(r.date_depense) },
+          { key: 'categorie_nom', label: 'Categorie' },
+          { key: 'montant', label: 'Montant', render: (r) => `${formatMontant(r.montant)} F` },
+          { key: 'description', label: 'Description' },
+          { key: 'agence_nom', label: 'Agence' },
+        ]}
+        fields={fields}
+      />
+    </div>
   )
 }

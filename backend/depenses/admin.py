@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import Depense
+from .models import CategorieDepense, Depense
+
+
+@admin.register(CategorieDepense)
+class CategorieDepenseAdmin(admin.ModelAdmin):
+    list_display = ('nom', 'actif')
+    search_fields = ('nom',)
 
 
 @admin.register(Depense)

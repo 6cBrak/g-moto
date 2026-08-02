@@ -216,7 +216,7 @@ class JournalCaisseView(APIView):
         agence_id = resolve_agence_filter(request)
 
         versements = Versement.objects.select_related('facture', 'agence')
-        depenses = Depense.objects.select_related('agence')
+        depenses = Depense.objects.select_related('agence', 'categorie')
         sorties = SortieCaisse.objects.select_related('agence')
         if agence_id:
             versements = versements.filter(agence_id=agence_id)
@@ -241,7 +241,7 @@ class JournalCaisseView(APIView):
                 'date': d.date_depense.isoformat(),
                 'montant': str(-d.montant),
                 'agence': d.agence.nom,
-                'description': d.description or d.get_categorie_display(),
+                'description': d.description or d.categorie.nom,
             }
             for d in depenses
         ] + [
@@ -288,9 +288,10 @@ class RapportDepensesView(APIView):
         depenses = appliquer_periode(depenses, 'date_depense', request)
 
         total = depenses.aggregate(total=Sum('montant'))['total'] or 0
-        par_categorie = list(
-            depenses.values('categorie').annotate(total=Sum('montant')).order_by('-total'),
-        )
+        par_categorie = [
+            {'categorie': row['categorie__nom'], 'total': row['total']}
+            for row in depenses.values('categorie__nom').annotate(total=Sum('montant')).order_by('-total')
+        ]
         return Response({'total_depenses': str(total), 'par_categorie': par_categorie})
 
 

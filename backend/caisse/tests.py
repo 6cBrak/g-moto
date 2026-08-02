@@ -4,7 +4,7 @@ from rest_framework.test import APITestCase
 
 from catalogue.models import Couleur, Fournisseur, Marque, TypeMoto
 from core.models import Agence, Utilisateur
-from depenses.models import Depense
+from depenses.models import CategorieDepense, Depense
 from facturation.models import Client, Facture
 from stock.models import Arrivage, Moto
 
@@ -49,8 +49,9 @@ class CaisseTestBase(APITestCase):
         }, format='json')
         self.facture = Facture.objects.get(id=creation.data['id'])
 
+        self.categorie_carburant, _ = CategorieDepense.objects.get_or_create(nom='Carburant')
         Depense.objects.create(
-            agence=self.agence_a, categorie=Depense.Categorie.CARBURANT, montant='20000',
+            agence=self.agence_a, categorie=self.categorie_carburant, montant='20000',
             date_depense='2026-01-15', cree_par=self.gerant_a,
         )
 
@@ -147,7 +148,7 @@ class RapportsTests(CaisseTestBase):
         self.client.force_authenticate(user=self.gerant_a)
         response = self.client.get(reverse('caisse-rapport-depenses'))
         self.assertEqual(response.data['total_depenses'], '20000.00')
-        self.assertEqual(response.data['par_categorie'][0]['categorie'], Depense.Categorie.CARBURANT)
+        self.assertEqual(response.data['par_categorie'][0]['categorie'], 'Carburant')
 
     def test_clients_debiteurs_sans_versement(self):
         self.client.force_authenticate(user=self.gerant_a)
