@@ -1,3 +1,4 @@
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -113,6 +114,26 @@ class FactureCreationTests(FacturationTestBase):
         response = self.client.get(reverse('facture-pdf', args=[facture_id]))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response['Content-Type'], 'application/pdf')
+
+    def test_ligne_expose_fichier_cmc_de_larrivage(self):
+        self.arrivage_a.fichier_cmc = SimpleUploadedFile('cmc.pdf', b'contenu', content_type='application/pdf')
+        self.arrivage_a.save()
+
+        self.client.force_authenticate(user=self.gerant_a)
+        creation = self.client.post(reverse('facture-list'), {
+            'client': self.client_a.id,
+            'lignes': [{'moto': self.moto_a.id, 'quantite': 1, 'prix_unitaire': '1000000'}],
+        }, format='json')
+        self.assertEqual(creation.status_code, status.HTTP_201_CREATED, creation.data)
+        self.assertIsNotNone(creation.data['lignes'][0]['arrivage_fichier_cmc'])
+
+    def test_ligne_sans_fichier_cmc_renvoie_null(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        creation = self.client.post(reverse('facture-list'), {
+            'client': self.client_a.id,
+            'lignes': [{'moto': self.moto_a.id, 'quantite': 1, 'prix_unitaire': '1000000'}],
+        }, format='json')
+        self.assertIsNone(creation.data['lignes'][0]['arrivage_fichier_cmc'])
 
 
 class CarteGriseTests(FacturationTestBase):

@@ -19,7 +19,7 @@ class ArrivageSerializer(serializers.ModelSerializer):
         model = Arrivage
         fields = [
             'id', 'agence', 'agence_nom', 'fournisseur', 'fournisseur_nom',
-            'numero_bon', 'date_arrivage', 'numero_facture', 'montant_facture',
+            'numero_bon', 'date_arrivage', 'numero_facture', 'montant_facture', 'fichier_cmc',
             'commentaire', 'cree_par', 'cree_par_username', 'date_creation', 'nb_motos',
         ]
         read_only_fields = ['id', 'cree_par', 'date_creation']

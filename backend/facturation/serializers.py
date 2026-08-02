@@ -37,14 +37,24 @@ class LigneFactureSerializer(serializers.ModelSerializer):
     moto_type_label = serializers.CharField(source='moto.type_moto.__str__', read_only=True)
     moto_couleur_nom = serializers.CharField(source='moto.couleur.nom', read_only=True)
     modele_casque_nom = serializers.CharField(source='modele_casque.nom', read_only=True)
+    arrivage_fichier_cmc = serializers.SerializerMethodField()
 
     class Meta:
         model = LigneFacture
         fields = [
             'id', 'moto', 'moto_numero_serie', 'moto_type_label', 'moto_couleur_nom',
             'modele_casque', 'modele_casque_nom', 'designation', 'quantite', 'prix_unitaire', 'montant',
+            'arrivage_fichier_cmc',
         ]
         read_only_fields = ['id', 'montant']
+
+    def get_arrivage_fichier_cmc(self, obj):
+        fichier = getattr(getattr(obj.moto, 'arrivage', None), 'fichier_cmc', None)
+        if not fichier:
+            return None
+        request = self.context.get('request')
+        url = fichier.url
+        return request.build_absolute_uri(url) if request else url
 
     def validate_moto(self, moto):
         if moto and moto.statut not in (Moto.Statut.EN_STOCK, Moto.Statut.EN_DEPOT):

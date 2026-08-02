@@ -12,6 +12,7 @@ class Arrivage(models.Model):
     date_arrivage = models.DateField()
     numero_facture = models.CharField(max_length=50, blank=True)
     montant_facture = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    fichier_cmc = models.FileField(upload_to='cmc/', null=True, blank=True)
     commentaire = models.TextField(blank=True)
     cree_par = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='arrivages_crees',
