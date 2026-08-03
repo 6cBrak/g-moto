@@ -14,15 +14,25 @@ class Versement(models.Model):
         VIREMENT = 'virement', 'Virement bancaire'
         CHEQUE = 'cheque', 'Cheque'
 
+    class Statut(models.TextChoices):
+        VALIDE = 'valide', 'Valide'
+        ANNULE = 'annule', 'Annule'
+
     facture = models.ForeignKey(Facture, on_delete=models.PROTECT, related_name='versements')
     agence = models.ForeignKey(Agence, on_delete=models.PROTECT, related_name='versements')
     montant = models.DecimalField(max_digits=12, decimal_places=2)
     mode_paiement = models.CharField(max_length=20, choices=ModePaiement.choices)
     reference_transaction = models.CharField(max_length=100, blank=True)
+    statut = models.CharField(max_length=20, choices=Statut.choices, default=Statut.VALIDE)
     cree_par = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='versements_crees',
     )
     date_versement = models.DateTimeField(auto_now_add=True)
+    annule_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='versements_annules',
+        null=True, blank=True,
+    )
+    date_annulation = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-date_versement']

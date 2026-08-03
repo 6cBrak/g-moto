@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.utils import timezone
 from rest_framework import serializers
 
+from caisse.models import Versement
 from core.models import Utilisateur
 from stock.models import HistoriqueMoto, Moto
 
@@ -66,6 +67,7 @@ class FactureSerializer(serializers.ModelSerializer):
     agence_nom = serializers.CharField(source='agence.nom', read_only=True)
     client_nom = serializers.CharField(source='client.nom', read_only=True)
     cree_par_username = serializers.CharField(source='cree_par.username', read_only=True)
+    annule_par_username = serializers.CharField(source='annule_par.username', read_only=True, default=None)
     total = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     total_verse = serializers.SerializerMethodField()
     solde = serializers.SerializerMethodField()
@@ -76,16 +78,24 @@ class FactureSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'numero_facture', 'agence', 'agence_nom', 'client', 'client_nom',
             'statut', 'remarque', 'cree_par', 'cree_par_username', 'date_facture', 'total',
-            'total_verse', 'solde', 'lignes',
+            'total_verse', 'solde', 'lignes', 'annule_par_username', 'date_annulation',
         ]
-        read_only_fields = ['id', 'numero_facture', 'cree_par', 'date_facture']
+        read_only_fields = [
+            'id', 'numero_facture', 'cree_par', 'date_facture', 'statut', 'date_annulation',
+        ]
         extra_kwargs = {'agence': {'required': False}}
 
     def get_total_verse(self, obj):
-        return str(sum((v.montant for v in obj.versements.all()), Decimal('0')))
+        return str(sum(
+            (v.montant for v in obj.versements.all() if v.statut == Versement.Statut.VALIDE),
+            Decimal('0'),
+        ))
 
     def get_solde(self, obj):
-        total_verse = sum((v.montant for v in obj.versements.all()), Decimal('0'))
+        total_verse = sum(
+            (v.montant for v in obj.versements.all() if v.statut == Versement.Statut.VALIDE),
+            Decimal('0'),
+        )
         return str(obj.total - total_verse)
 
     def validate(self, attrs):

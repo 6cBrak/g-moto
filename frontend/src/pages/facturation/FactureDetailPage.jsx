@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../api/client'
 import { useResourceList, useResourceMutations } from '../../hooks/useResource'
+import { useAuthStore } from '../../store/authStore'
 import DataTable from '../../components/DataTable'
 import FormModal from '../../components/FormModal'
 import Modal from '../../components/Modal'
@@ -65,6 +66,67 @@ function RetraitModal({ resource, item, onClose, onDone }) {
   )
 }
 
+function AnnulerFactureModal({ facture, onClose, onSuccess }) {
+  const [erreur, setErreur] = useState(null)
+  const mutation = useMutation({
+    mutationFn: () => apiClient.post(`/factures/${facture.id}/annuler/`),
+    onSuccess: () => { onSuccess(); onClose() },
+    onError: (err) => setErreur(erreurMessage(err)),
+  })
+
+  return (
+    <Modal title={`Annuler la facture ${facture.numero_facture}`} onClose={onClose}>
+      <p className="text-sm text-slate-600 mb-3">
+        Cette action est irreversible. La facture passera au statut "Annulee" et les motos
+        vendues dessus repasseront en stock disponible.
+      </p>
+      {erreur && <p className="text-red-600 text-sm mb-3">{erreur}</p>}
+      <div className="flex justify-end gap-2">
+        <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900">
+          Retour
+        </button>
+        <button
+          onClick={() => mutation.mutate()}
+          disabled={mutation.isPending}
+          className="px-4 py-2 text-sm bg-red-600 text-white rounded disabled:opacity-50"
+        >
+          Confirmer l'annulation
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
+function AnnulerVersementModal({ versement, onClose, onSuccess }) {
+  const [erreur, setErreur] = useState(null)
+  const mutation = useMutation({
+    mutationFn: () => apiClient.post(`/versements/${versement.id}/annuler/`),
+    onSuccess: () => { onSuccess(); onClose() },
+    onError: (err) => setErreur(erreurMessage(err)),
+  })
+
+  return (
+    <Modal title="Annuler ce versement" onClose={onClose}>
+      <p className="text-sm text-slate-600 mb-3">
+        Montant : <strong>{formatMontant(versement.montant)} F</strong> — cette action est irreversible.
+      </p>
+      {erreur && <p className="text-red-600 text-sm mb-3">{erreur}</p>}
+      <div className="flex justify-end gap-2">
+        <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900">
+          Retour
+        </button>
+        <button
+          onClick={() => mutation.mutate()}
+          disabled={mutation.isPending}
+          className="px-4 py-2 text-sm bg-red-600 text-white rounded disabled:opacity-50"
+        >
+          Confirmer l'annulation
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
 function UploadFichier({ resource, id, onDone, label = 'Uploader le scan' }) {
   const [file, setFile] = useState(null)
   const [erreur, setErreur] = useState(null)
@@ -103,6 +165,8 @@ function UploadFichier({ resource, id, onDone, label = 'Uploader le scan' }) {
 export default function FactureDetailPage() {
   const { id } = useParams()
   const queryClient = useQueryClient()
+  const user = useAuthStore((state) => state.user)
+  const canAnnuler = user?.role === 'admin' || user?.role === 'gerant'
 
   const { data: facture, isLoading } = useQuery({
     queryKey: ['factures', id],
@@ -120,6 +184,8 @@ export default function FactureDetailPage() {
   const [modal, setModal] = useState(null)
   const [retraitTarget, setRetraitTarget] = useState(null)
   const [erreurRecue, setErreurRecue] = useState(null)
+  const [annulerFacture, setAnnulerFacture] = useState(false)
+  const [annulerVersementTarget, setAnnulerVersementTarget] = useState(null)
 
   const invalider = () => {
     queryClient.invalidateQueries({ queryKey: ['factures', id] })
@@ -158,6 +224,11 @@ export default function FactureDetailPage() {
             {facture.client_nom} — {facture.agence_nom} — {formatDateTime(facture.date_facture)}
           </p>
           {facture.remarque && <p className="text-slate-600 text-sm mt-1">{facture.remarque}</p>}
+          {facture.statut === 'annulee' && (
+            <p className="text-red-600 text-xs mt-1">
+              Annulee le {formatDateTime(facture.date_annulation)} par {facture.annule_par_username || '-'}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           <button onClick={() => ouvrirPdf(`/factures/${id}/pdf/`)} className="px-3 py-2 text-sm border border-slate-300 rounded">
@@ -166,6 +237,14 @@ export default function FactureDetailPage() {
           <button onClick={() => ouvrirPdf(`/factures/${id}/bordereau/`)} className="px-3 py-2 text-sm border border-slate-300 rounded">
             Bordereau PDF
           </button>
+          {canAnnuler && facture.statut === 'validee' && (
+            <button
+              onClick={() => setAnnulerFacture(true)}
+              className="px-3 py-2 text-sm border border-red-300 text-red-600 rounded hover:bg-red-50"
+            >
+              Annuler la facture
+            </button>
+          )}
         </div>
       </div>
 
@@ -199,13 +278,13 @@ export default function FactureDetailPage() {
       <div>
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-sm font-medium text-slate-700">Versements</h2>
-          {Number(facture.solde) > 0 ? (
+          {facture.statut === 'validee' && Number(facture.solde) > 0 ? (
             <button onClick={() => setModal('versement')} className="text-sm text-slate-600 hover:text-slate-900 underline">
               + Ajouter un versement
             </button>
-          ) : (
+          ) : facture.statut === 'validee' ? (
             <span className="text-sm text-green-700">Facture soldee</span>
-          )}
+          ) : null}
         </div>
         <DataTable
           rows={versements}
@@ -215,11 +294,25 @@ export default function FactureDetailPage() {
             { key: 'montant', label: 'Montant', render: (r) => `${formatMontant(r.montant)} F` },
             { key: 'mode_paiement', label: 'Mode' },
             { key: 'reference_transaction', label: 'Reference' },
+            {
+              key: 'statut',
+              label: 'Statut',
+              render: (r) => (r.statut === 'annule'
+                ? <span className="text-red-600 text-xs font-medium">Annule</span>
+                : <span className="text-green-700 text-xs font-medium">Valide</span>),
+            },
           ]}
           actions={(row) => (
-            <button onClick={() => ouvrirPdf(`/versements/${row.id}/recu/`)} className="text-slate-600 hover:text-slate-900 text-sm">
-              Recu PDF
-            </button>
+            <>
+              <button onClick={() => ouvrirPdf(`/versements/${row.id}/recu/`)} className="text-slate-600 hover:text-slate-900 text-sm">
+                Recu PDF
+              </button>
+              {canAnnuler && row.statut === 'valide' && (
+                <button onClick={() => setAnnulerVersementTarget(row)} className="text-red-600 hover:text-red-800 text-sm">
+                  Annuler
+                </button>
+              )}
+            </>
           )}
         />
       </div>
@@ -406,6 +499,22 @@ export default function FactureDetailPage() {
           item={retraitTarget.item}
           onClose={() => setRetraitTarget(null)}
           onDone={invalider}
+        />
+      )}
+
+      {annulerFacture && (
+        <AnnulerFactureModal
+          facture={facture}
+          onClose={() => setAnnulerFacture(false)}
+          onSuccess={invalider}
+        />
+      )}
+
+      {annulerVersementTarget && (
+        <AnnulerVersementModal
+          versement={annulerVersementTarget}
+          onClose={() => setAnnulerVersementTarget(null)}
+          onSuccess={invalider}
         />
       )}
     </div>

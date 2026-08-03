@@ -5,6 +5,7 @@ import { useUiStore } from '../store/uiStore'
 import { useResourceList } from '../hooks/useResource'
 
 const ROLES_TOUS = ['admin', 'gerant', 'vendeur_caissier']
+const ROLES_GESTION = ['admin', 'gerant']
 
 const navGroups = [
   { type: 'link', to: '/', label: 'Tableau de bord', roles: ROLES_TOUS },
@@ -12,11 +13,11 @@ const navGroups = [
     type: 'group',
     label: 'Stock',
     items: [
-      { to: '/catalogue', label: 'Catalogue', roles: ROLES_TOUS },
-      { to: '/stock/arrivages', label: 'Arrivages', roles: ROLES_TOUS },
+      { to: '/catalogue', label: 'Catalogue', roles: ROLES_GESTION },
+      { to: '/stock/arrivages', label: 'Arrivages', roles: ROLES_GESTION },
       { to: '/stock/motos', label: 'Motos', roles: ROLES_TOUS },
-      { to: '/stock/alertes', label: 'Alertes stock', roles: ROLES_TOUS },
-      { to: '/stock/marge-arrivages', label: 'Marge par arrivage', roles: ['admin', 'gerant'] },
+      { to: '/stock/alertes', label: 'Alertes stock', roles: ROLES_GESTION },
+      { to: '/stock/marge-arrivages', label: 'Marge par arrivage', roles: ROLES_GESTION },
     ],
   },
   {
@@ -24,7 +25,7 @@ const navGroups = [
     label: 'Facturation',
     items: [
       { to: '/clients', label: 'Clients', roles: ROLES_TOUS },
-      { to: '/depots', label: 'Depots revendeurs', roles: ROLES_TOUS },
+      { to: '/depots', label: 'Depots revendeurs', roles: ROLES_GESTION },
       { to: '/factures', label: 'Factures', roles: ROLES_TOUS },
     ],
   },
@@ -39,13 +40,13 @@ const navGroups = [
       { to: '/caisse/rapports', label: 'Rapports caisse', roles: ROLES_TOUS },
     ],
   },
-  { type: 'link', to: '/depenses', label: 'Depenses', roles: ROLES_TOUS },
+  { type: 'link', to: '/depenses', label: 'Depenses', roles: ROLES_GESTION },
   {
     type: 'group',
     label: 'Apres-vente',
     items: [
-      { to: '/apresvente/garanties', label: 'Garanties', roles: ROLES_TOUS },
-      { to: '/apresvente/entretiens', label: 'Entretiens', roles: ROLES_TOUS },
+      { to: '/apresvente/garanties', label: 'Garanties', roles: ROLES_GESTION },
+      { to: '/apresvente/entretiens', label: 'Entretiens', roles: ROLES_GESTION },
     ],
   },
   {
@@ -55,6 +56,7 @@ const navGroups = [
       { to: '/admin/agences', label: 'Agences', roles: ['admin'] },
       { to: '/admin/utilisateurs', label: 'Utilisateurs', roles: ['admin', 'gerant'] },
       { to: '/admin/comparatif-agences', label: 'Comparatif agences', roles: ['admin'] },
+      { to: '/admin/parametrage', label: 'Parametrage', roles: ['admin'] },
     ],
   },
 ]

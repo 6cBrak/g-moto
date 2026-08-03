@@ -13,21 +13,26 @@ class VersementSerializer(FactureAgenceValidationMixin, serializers.ModelSeriali
     facture_numero = serializers.CharField(source='facture.numero_facture', read_only=True)
     client_nom = serializers.CharField(source='facture.client.nom', read_only=True)
     cree_par_username = serializers.CharField(source='cree_par.username', read_only=True)
+    annule_par_username = serializers.CharField(source='annule_par.username', read_only=True, default=None)
 
     class Meta:
         model = Versement
         fields = [
             'id', 'facture', 'facture_numero', 'client_nom', 'agence', 'agence_nom',
-            'montant', 'mode_paiement', 'reference_transaction',
+            'montant', 'mode_paiement', 'reference_transaction', 'statut',
             'cree_par', 'cree_par_username', 'date_versement',
+            'annule_par_username', 'date_annulation',
         ]
-        read_only_fields = ['id', 'agence', 'cree_par', 'date_versement']
+        read_only_fields = ['id', 'agence', 'cree_par', 'date_versement', 'statut', 'date_annulation']
 
     def validate(self, attrs):
         facture = attrs.get('facture')
         montant = attrs.get('montant')
         if facture and montant is not None:
-            deja_verse = sum((v.montant for v in facture.versements.all()), Decimal('0'))
+            deja_verse = sum(
+                (v.montant for v in facture.versements.all() if v.statut == Versement.Statut.VALIDE),
+                Decimal('0'),
+            )
             if deja_verse + montant > facture.total:
                 raise serializers.ValidationError(
                     {'montant': "Ce versement depasserait le montant total de la facture (deja soldee ou proche)."},

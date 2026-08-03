@@ -12,8 +12,10 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
+from caisse.models import Versement
 from core.models import Utilisateur
 from core.pdf_utils import dessiner_entete
+from core.permissions import IsAdminOrGerant
 from core.utils import appliquer_periode, resolve_agence_filter
 from core.viewsets import AgenceScopedViewSet
 from stock.models import HistoriqueMoto, Moto
@@ -51,7 +53,10 @@ class ClientViewSet(AgenceScopedViewSet):
         )
         data = []
         for facture in factures:
-            total_verse = sum((v.montant for v in facture.versements.all()), start=0)
+            total_verse = sum(
+                (v.montant for v in facture.versements.all() if v.statut == Versement.Statut.VALIDE),
+                start=0,
+            )
             carte_grise = getattr(facture, 'carte_grise', None)
             data.append({
                 'facture_id': facture.id,
@@ -261,6 +266,52 @@ class FactureViewSet(AgenceScopedViewSet):
         else:
             agence = user.agence
         serializer.save(agence=agence, cree_par=user, numero_facture=generer_numero_facture(agence))
+
+    def get_permissions(self):
+        if self.action == 'annuler':
+            return [IsAuthenticated(), IsAdminOrGerant()]
+        return super().get_permissions()
+
+    def update(self, request, *args, **kwargs):
+        return Response(
+            {'detail': "Modification non autorisee. Utilisez l'action 'annuler'."}, status=405,
+        )
+
+    def partial_update(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        return Response(
+            {'detail': "Suppression non autorisee. Utilisez l'action 'annuler'."}, status=405,
+        )
+
+    @action(detail=True, methods=['post'])
+    def annuler(self, request, pk=None):
+        facture = self.get_object()
+        if facture.statut == Facture.Statut.ANNULEE:
+            return Response({'detail': "Cette facture est deja annulee."}, status=400)
+
+        for ligne in facture.lignes.select_related('moto').all():
+            moto = ligne.moto
+            if not moto:
+                continue
+            depot_vente = getattr(ligne, 'depot_origine', None)
+            if depot_vente:
+                depot_vente.statut = DepotVente.Statut.EN_COURS
+                depot_vente.ligne_facture = None
+                depot_vente.date_resolution = None
+                depot_vente.resolu_par = None
+                depot_vente.save(update_fields=['statut', 'ligne_facture', 'date_resolution', 'resolu_par'])
+                moto.statut = Moto.Statut.EN_DEPOT
+            else:
+                moto.statut = Moto.Statut.EN_STOCK
+            moto.save(update_fields=['statut'])
+
+        facture.statut = Facture.Statut.ANNULEE
+        facture.annule_par = request.user
+        facture.date_annulation = timezone.now()
+        facture.save(update_fields=['statut', 'annule_par', 'date_annulation'])
+        return Response(FactureSerializer(facture, context={'request': request}).data)
 
     @action(detail=True, methods=['get'], url_path='pdf')
     def pdf(self, request, pk=None):

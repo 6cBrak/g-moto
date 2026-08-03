@@ -38,7 +38,7 @@ def calculer_montant_theorique(session):
 
     encaissements = Versement.objects.filter(
         agence=session.agence, date_versement__date=session.date_session,
-    ).aggregate(total=Sum('montant'))['total'] or Decimal('0')
+    ).exclude(statut=Versement.Statut.ANNULE).aggregate(total=Sum('montant'))['total'] or Decimal('0')
     depenses = Depense.objects.filter(
         agence=session.agence, date_depense=session.date_session,
     ).aggregate(total=Sum('montant'))['total'] or Decimal('0')

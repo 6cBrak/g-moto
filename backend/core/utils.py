@@ -23,6 +23,61 @@ def appliquer_periode(queryset, champ_date, request):
     return queryset
 
 
+def compter_donnees_commerciales():
+    from caisse.models import SessionCaisse, SortieCaisse, Versement
+    from facturation.models import (
+        CarteGrise, Client, Declaration, DepotVente, EnvoiDepot, Facture,
+        LigneFacture, Quittance,
+    )
+    from stock.models import Moto
+
+    return {
+        'versements': Versement.objects.count(),
+        'sorties_caisse': SortieCaisse.objects.count(),
+        'sessions_caisse': SessionCaisse.objects.count(),
+        'quittances': Quittance.objects.count(),
+        'cartes_grises': CarteGrise.objects.count(),
+        'declarations': Declaration.objects.count(),
+        'depots_vente': DepotVente.objects.count(),
+        'envois_depot': EnvoiDepot.objects.count(),
+        'lignes_facture': LigneFacture.objects.count(),
+        'factures': Facture.objects.count(),
+        'clients': Client.objects.count(),
+        'motos_a_remettre_en_stock': Moto.objects.filter(
+            statut__in=[Moto.Statut.VENDUE, Moto.Statut.EN_DEPOT],
+        ).count(),
+    }
+
+
+def purger_donnees_commerciales():
+    """Supprime les donnees commerciales de test avant le lancement en production.
+
+    Vide factures (et documents lies), caisse, clients et depots-vente. Le
+    module stock n'est pas touche, hormis la remise en stock des motos
+    vendues/en depot (leur facture ou depot disparaissant, elles doivent
+    redevenir disponibles).
+    """
+    from django.db import transaction
+
+    from caisse.models import SessionCaisse, SortieCaisse, Versement
+    from facturation.models import Client, DepotVente, EnvoiDepot, Facture
+    from stock.models import Moto
+
+    counts = compter_donnees_commerciales()
+    with transaction.atomic():
+        Versement.objects.all().delete()
+        SortieCaisse.objects.all().delete()
+        SessionCaisse.objects.all().delete()
+        DepotVente.objects.all().delete()
+        EnvoiDepot.objects.all().delete()
+        Facture.objects.all().delete()
+        Client.objects.all().delete()
+        Moto.objects.filter(
+            statut__in=[Moto.Statut.VENDUE, Moto.Statut.EN_DEPOT],
+        ).update(statut=Moto.Statut.EN_STOCK)
+    return counts
+
+
 def calculer_clients_debiteurs(agence_id=None, nom=None):
     """Liste des clients dont le solde (facture - verse) est positif.
 
@@ -47,7 +102,7 @@ def calculer_clients_debiteurs(agence_id=None, nom=None):
         ).aggregate(total=Sum('montant'))['total'] or Decimal('0')
         total_verse = Versement.objects.filter(
             facture__client=client,
-        ).aggregate(total=Sum('montant'))['total'] or Decimal('0')
+        ).exclude(statut=Versement.Statut.ANNULE).aggregate(total=Sum('montant'))['total'] or Decimal('0')
         solde = total_facture - total_verse
         if solde > 0:
             debiteurs.append({

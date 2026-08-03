@@ -41,6 +41,11 @@ class Facture(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='factures_creees',
     )
     date_facture = models.DateTimeField(auto_now_add=True)
+    annule_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='factures_annulees',
+        null=True, blank=True,
+    )
+    date_annulation = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-date_facture']

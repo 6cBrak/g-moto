@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from .models import Agence, Utilisateur
 from .permissions import IsAdmin, IsAdminOrGerant
 from .serializers import AgenceSerializer, UtilisateurSerializer
+from .utils import compter_donnees_commerciales, purger_donnees_commerciales
 
 
 class MeView(APIView):
@@ -61,3 +62,15 @@ class UtilisateurViewSet(viewsets.ModelViewSet):
             serializer.save(agence=user.agence)
         else:
             serializer.save()
+
+
+class PurgeDonneesCommercialesView(APIView):
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get(self, request):
+        return Response(compter_donnees_commerciales())
+
+    def post(self, request):
+        if request.data.get('confirmation') != 'SUPPRIMER':
+            return Response({'detail': "Confirmation invalide."}, status=400)
+        return Response(purger_donnees_commerciales())

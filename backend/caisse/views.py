@@ -18,6 +18,7 @@ from reportlab.pdfgen import canvas
 
 from core.models import Agence, Utilisateur
 from core.pdf_utils import dessiner_entete
+from core.permissions import IsAdminOrGerant
 from core.utils import appliquer_periode, calculer_clients_debiteurs, resolve_agence_filter
 from core.viewsets import AgenceScopedViewSet
 from depenses.models import Depense
@@ -45,6 +46,35 @@ class VersementViewSet(AgenceScopedViewSet):
         facture = serializer.validated_data['facture']
         verifier_caisse_ouverte(facture.agence)
         serializer.save(agence=facture.agence, cree_par=self.request.user)
+
+    def get_permissions(self):
+        if self.action == 'annuler':
+            return [IsAuthenticated(), IsAdminOrGerant()]
+        return super().get_permissions()
+
+    def update(self, request, *args, **kwargs):
+        return Response(
+            {'detail': "Modification non autorisee. Utilisez l'action 'annuler'."}, status=405,
+        )
+
+    def partial_update(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        return Response(
+            {'detail': "Suppression non autorisee. Utilisez l'action 'annuler'."}, status=405,
+        )
+
+    @action(detail=True, methods=['post'])
+    def annuler(self, request, pk=None):
+        versement = self.get_object()
+        if versement.statut == Versement.Statut.ANNULE:
+            return Response({'detail': "Ce versement est deja annule."}, status=400)
+        versement.statut = Versement.Statut.ANNULE
+        versement.annule_par = request.user
+        versement.date_annulation = timezone.now()
+        versement.save(update_fields=['statut', 'annule_par', 'date_annulation'])
+        return Response(VersementSerializer(versement).data)
 
     @action(detail=True, methods=['get'], url_path='recu')
     def recu(self, request, pk=None):
@@ -215,7 +245,9 @@ class JournalCaisseView(APIView):
     def get(self, request):
         agence_id = resolve_agence_filter(request)
 
-        versements = Versement.objects.select_related('facture', 'agence')
+        versements = Versement.objects.select_related('facture', 'agence').exclude(
+            statut=Versement.Statut.ANNULE,
+        )
         depenses = Depense.objects.select_related('agence', 'categorie')
         sorties = SortieCaisse.objects.select_related('agence')
         if agence_id:

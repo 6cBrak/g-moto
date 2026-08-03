@@ -136,6 +136,65 @@ class VersementTests(CaisseTestBase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
+class VersementAnnulationTests(CaisseTestBase):
+    def setUp(self):
+        super().setUp()
+        self.vendeur_a = Utilisateur.objects.create_user(
+            username='vendeur_a', password='pass12345',
+            role=Utilisateur.Role.VENDEUR_CAISSIER, agence=self.agence_a,
+        )
+        self.client.force_authenticate(user=self.gerant_a)
+        creation = self.client.post(reverse('versement-list'), {
+            'facture': self.facture.id, 'montant': '400000',
+            'mode_paiement': Versement.ModePaiement.ESPECES,
+        })
+        self.versement = Versement.objects.get(id=creation.data['id'])
+
+    def test_vendeur_ne_peut_pas_annuler(self):
+        self.client.force_authenticate(user=self.vendeur_a)
+        response = self.client.post(reverse('versement-annuler', args=[self.versement.id]))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_gerant_peut_annuler_versement(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.post(reverse('versement-annuler', args=[self.versement.id]))
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data['statut'], Versement.Statut.ANNULE)
+
+    def test_annuler_deux_fois_refuse(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        self.client.post(reverse('versement-annuler', args=[self.versement.id]))
+        response = self.client.post(reverse('versement-annuler', args=[self.versement.id]))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_versement_annule_exclu_du_total_verse_facture(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        self.client.post(reverse('versement-annuler', args=[self.versement.id]))
+        facture_response = self.client.get(reverse('facture-detail', args=[self.facture.id]))
+        self.assertEqual(facture_response.data['total_verse'], '0')
+
+    def test_versement_annule_exclu_du_montant_theorique_caisse(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        self.client.post(reverse('versement-annuler', args=[self.versement.id]))
+        session = SessionCaisse.objects.get(agence=self.agence_a)
+        fermeture = self.client.post(
+            reverse('session-caisse-fermer', args=[session.id]), {'montant_fermeture': '0'},
+        )
+        self.assertEqual(fermeture.data['montant_theorique'], '0.00')
+
+    def test_modification_versement_refusee(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.patch(reverse('versement-detail', args=[self.versement.id]), {
+            'montant': '1',
+        })
+        self.assertEqual(response.status_code, 405)
+
+    def test_suppression_versement_refusee(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.delete(reverse('versement-detail', args=[self.versement.id]))
+        self.assertEqual(response.status_code, 405)
+
+
 class RapportsTests(CaisseTestBase):
     def test_rapport_ventes_scope_agence(self):
         self.client.force_authenticate(user=self.gerant_a)

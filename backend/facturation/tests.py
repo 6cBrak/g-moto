@@ -136,6 +136,84 @@ class FactureCreationTests(FacturationTestBase):
         self.assertIsNone(creation.data['lignes'][0]['arrivage_fichier_cmc'])
 
 
+class FactureAnnulationTests(FacturationTestBase):
+    def setUp(self):
+        super().setUp()
+        self.vendeur_a = Utilisateur.objects.create_user(
+            username='vendeur_a', password='pass12345',
+            role=Utilisateur.Role.VENDEUR_CAISSIER, agence=self.agence_a,
+        )
+        self.client.force_authenticate(user=self.gerant_a)
+        creation = self.client.post(reverse('facture-list'), {
+            'client': self.client_a.id,
+            'lignes': [{'moto': self.moto_a.id, 'quantite': 1, 'prix_unitaire': '1000000'}],
+        }, format='json')
+        self.facture = Facture.objects.get(id=creation.data['id'])
+
+    def test_vendeur_ne_peut_pas_annuler(self):
+        self.client.force_authenticate(user=self.vendeur_a)
+        response = self.client.post(reverse('facture-annuler', args=[self.facture.id]))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_gerant_peut_annuler_et_remet_la_moto_en_stock(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.post(reverse('facture-annuler', args=[self.facture.id]))
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data['statut'], Facture.Statut.ANNULEE)
+        self.assertEqual(response.data['annule_par_username'], 'gerant_a')
+
+        self.facture.refresh_from_db()
+        self.assertIsNotNone(self.facture.date_annulation)
+
+        self.moto_a.refresh_from_db()
+        self.assertEqual(self.moto_a.statut, Moto.Statut.EN_STOCK)
+
+    def test_annuler_deux_fois_refuse(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        self.client.post(reverse('facture-annuler', args=[self.facture.id]))
+        response = self.client.post(reverse('facture-annuler', args=[self.facture.id]))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_modification_facture_refusee(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.patch(reverse('facture-detail', args=[self.facture.id]), {
+            'remarque': 'Modif interdite',
+        })
+        self.assertEqual(response.status_code, 405)
+
+    def test_suppression_facture_refusee(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.delete(reverse('facture-detail', args=[self.facture.id]))
+        self.assertEqual(response.status_code, 405)
+
+    def test_annulation_moto_en_depot_revient_en_depot(self):
+        moto2 = Moto.objects.create(
+            numero_serie='SN-A-0002', type_moto=self.type_moto, couleur=self.couleur,
+            arrivage=self.arrivage_a, agence=self.agence_a,
+        )
+        client_revendeur = Client.objects.create(
+            agence=self.agence_a, nom='Revendeur Moto+', segment=Client.Segment.REVENDEUR,
+        )
+        self.client.force_authenticate(user=self.gerant_a)
+        self.client.post(reverse('envoidepot-list'), {
+            'client': client_revendeur.id,
+            'motos': [moto2.id],
+        }, format='json')
+        facture_depot = self.client.post(reverse('facture-list'), {
+            'client': client_revendeur.id,
+            'lignes': [{'moto': moto2.id, 'quantite': 1, 'prix_unitaire': '900000'}],
+        }, format='json')
+
+        response = self.client.post(reverse('facture-annuler', args=[facture_depot.data['id']]))
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+
+        moto2.refresh_from_db()
+        self.assertEqual(moto2.statut, Moto.Statut.EN_DEPOT)
+        depot_ligne = DepotVente.objects.get(moto=moto2)
+        self.assertEqual(depot_ligne.statut, DepotVente.Statut.EN_COURS)
+        self.assertIsNone(depot_ligne.ligne_facture)
+
+
 class CarteGriseTests(FacturationTestBase):
     def setUp(self):
         super().setUp()
