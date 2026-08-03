@@ -12,6 +12,23 @@ export function useResourceList(resource, params = {}, options = {}) {
   })
 }
 
+// Comme useResourceList, mais conserve les metadonnees de pagination DRF
+// (count/next/previous) pour les listes trop volumineuses pour tenir sur une page.
+export function useResourceListPaged(resource, params = {}, options = {}) {
+  return useQuery({
+    queryKey: [resource, 'list-paged', params],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/${resource}/`, { params })
+      if (data && Array.isArray(data.results)) {
+        return { results: data.results, count: data.count ?? data.results.length }
+      }
+      const results = Array.isArray(data) ? data : []
+      return { results, count: results.length }
+    },
+    ...options,
+  })
+}
+
 export function useResourceMutations(resource) {
   const queryClient = useQueryClient()
   const invalidate = () => queryClient.invalidateQueries({ queryKey: [resource] })

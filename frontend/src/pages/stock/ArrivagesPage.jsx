@@ -3,7 +3,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import CrudPage from '../../components/CrudPage'
 import DataTable from '../../components/DataTable'
 import FormModal from '../../components/FormModal'
-import { useResourceList, useResourceMutations } from '../../hooks/useResource'
+import Pagination from '../../components/Pagination'
+import { useResourceList, useResourceListPaged, useResourceMutations } from '../../hooks/useResource'
 import { useAuthStore } from '../../store/authStore'
 import { formatDate, formatMontant } from '../../lib/format'
 import { ouvrirPdf } from '../../lib/pdf'
@@ -17,7 +18,9 @@ const STATUTS = {
 
 function ArrivageMotosPanel({ arrivage, onClose }) {
   const queryClient = useQueryClient()
-  const { data: motos, isLoading } = useResourceList('motos', { arrivage: arrivage.id })
+  const [page, setPage] = useState(1)
+  const { data: motosPage, isLoading } = useResourceListPaged('motos', { arrivage: arrivage.id, page })
+  const motos = motosPage?.results
   const { data: typesMoto } = useResourceList('types-moto')
   const { data: couleurs } = useResourceList('couleurs')
   const { create, update, remove } = useResourceMutations('motos')
@@ -102,6 +105,7 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
           </>
         )}
       />
+      <Pagination page={page} onPageChange={setPage} count={motosPage?.count ?? 0} />
 
       <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-3">
         <div className="col-span-2 sm:col-span-1">
@@ -253,7 +257,7 @@ export default function ArrivagesPage() {
         fields={fields}
       />
 
-      {selected && <ArrivageMotosPanel arrivage={selected} onClose={() => setSelected(null)} />}
+      {selected && <ArrivageMotosPanel key={selected.id} arrivage={selected} onClose={() => setSelected(null)} />}
     </div>
   )
 }
