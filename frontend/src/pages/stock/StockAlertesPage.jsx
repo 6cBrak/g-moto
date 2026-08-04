@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '../../api/client'
 import DataTable from '../../components/DataTable'
+import { formatMontant } from '../../lib/format'
 
 export default function StockAlertesPage() {
   const { data: vueEnsemble, isLoading: loadingVue } = useQuery({
@@ -19,6 +20,7 @@ export default function StockAlertesPage() {
         {!loadingVue && vueEnsemble && (
           <p className="text-slate-600 mb-4">
             Total en stock : <span className="font-semibold">{vueEnsemble.total_en_stock}</span> moto(s)
+            {' — '}Valeur du stock : <span className="font-semibold">{formatMontant(vueEnsemble.valeur_totale)} F</span>
           </p>
         )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -30,6 +32,7 @@ export default function StockAlertesPage() {
               columns={[
                 { key: 'agence__nom', label: 'Agence' },
                 { key: 'quantite', label: 'Quantite' },
+                { key: 'valeur', label: 'Valeur', render: (r) => `${formatMontant(r.valeur)} F` },
               ]}
             />
           </div>
@@ -42,6 +45,7 @@ export default function StockAlertesPage() {
                 { key: 'type_moto__marque__nom', label: 'Marque' },
                 { key: 'type_moto__nom', label: 'Modele' },
                 { key: 'quantite', label: 'Quantite' },
+                { key: 'valeur', label: 'Valeur', render: (r) => `${formatMontant(r.valeur)} F` },
               ]}
             />
           </div>

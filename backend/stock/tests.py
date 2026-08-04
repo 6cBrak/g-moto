@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -200,6 +202,20 @@ class StockVueEnsembleTests(StockTestBase):
         self.client.force_authenticate(user=self.admin)
         response = self.client.get(reverse('stock-vue-ensemble'))
         self.assertEqual(response.data['total_en_stock'], 2)
+
+    def test_vue_ensemble_expose_valeur_totale(self):
+        self.moto_a.prix_achat = '850000'
+        self.moto_a.save()
+        self.client.force_authenticate(user=self.vendeur_a)
+        response = self.client.get(reverse('stock-vue-ensemble'))
+        self.assertEqual(response.data['valeur_totale'], Decimal('850000.00'))
+        self.assertEqual(response.data['par_agence'][0]['valeur'], Decimal('850000.00'))
+        self.assertEqual(response.data['par_type'][0]['valeur'], Decimal('850000.00'))
+
+    def test_vue_ensemble_valeur_totale_nulle_sans_prix_achat(self):
+        self.client.force_authenticate(user=self.vendeur_a)
+        response = self.client.get(reverse('stock-vue-ensemble'))
+        self.assertEqual(response.data['valeur_totale'], Decimal('0'))
 
     def test_alerte_stock_bas_declenchee_sous_le_seuil(self):
         # seuil_alerte par defaut = 3, seule 1 moto en stock pour ce type dans l'agence A

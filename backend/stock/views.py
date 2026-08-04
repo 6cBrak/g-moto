@@ -1,7 +1,8 @@
+from decimal import Decimal
 from io import BytesIO
 
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.db.models.deletion import ProtectedError
 from django.http import FileResponse
 from rest_framework.decorators import action
@@ -171,16 +172,18 @@ class StockVueEnsembleView(APIView):
 
         par_agence = list(
             qs.values('agence_id', 'agence__nom')
-            .annotate(quantite=Count('id'))
+            .annotate(quantite=Count('id'), valeur=Sum('prix_achat'))
             .order_by('agence__nom'),
         )
         par_type = list(
             qs.values('type_moto_id', 'type_moto__nom', 'type_moto__marque__nom')
-            .annotate(quantite=Count('id'))
+            .annotate(quantite=Count('id'), valeur=Sum('prix_achat'))
             .order_by('-quantite'),
         )
+        valeur_totale = qs.aggregate(total=Sum('prix_achat'))['total'] or Decimal('0')
         return Response({
             'total_en_stock': qs.count(),
+            'valeur_totale': valeur_totale,
             'par_agence': par_agence,
             'par_type': par_type,
         })

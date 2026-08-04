@@ -87,7 +87,7 @@ export default function MotosPage() {
   const [filtres, setFiltres] = useState({})
   const [page, setPage] = useState(1)
   const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v))
-  const { data: motosPage, isLoading } = useResourceListPaged('motos', { ...params, page })
+  const { data: motosPage, isLoading } = useResourceListPaged('motos', { ...params, page, page_size: 10 })
   const motos = motosPage?.results
   const { data: typesMoto } = useResourceList('types-moto')
   const { data: couleurs } = useResourceList('couleurs')
@@ -211,7 +211,7 @@ export default function MotosPage() {
           </>
         )}
       />
-      <Pagination page={page} onPageChange={setPage} count={motosPage?.count ?? 0} />
+      <Pagination page={page} onPageChange={setPage} count={motosPage?.count ?? 0} pageSize={10} />
 
       {showCreate && (
         <FormModal
