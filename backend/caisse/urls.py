@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     ClientsDebiteursView,
+    FournisseursDusView,
     HistoriqueSerieView,
     JournalCaisseView,
     RapportDepensesView,
@@ -23,6 +24,7 @@ urlpatterns = [
     path('caisse/rapport-ventes/', RapportVentesView.as_view(), name='caisse-rapport-ventes'),
     path('caisse/rapport-depenses/', RapportDepensesView.as_view(), name='caisse-rapport-depenses'),
     path('caisse/clients-debiteurs/', ClientsDebiteursView.as_view(), name='caisse-clients-debiteurs'),
+    path('caisse/fournisseurs-dus/', FournisseursDusView.as_view(), name='caisse-fournisseurs-dus'),
     path(
         'caisse/rapport-ventes-clients/',
         RapportVentesParClientView.as_view(),

@@ -60,8 +60,8 @@ class Facture(models.Model):
 
 class LigneFacture(models.Model):
     facture = models.ForeignKey(Facture, on_delete=models.CASCADE, related_name='lignes')
-    moto = models.OneToOneField(
-        Moto, on_delete=models.PROTECT, related_name='ligne_facture', null=True, blank=True,
+    moto = models.ForeignKey(
+        Moto, on_delete=models.PROTECT, related_name='lignes_facture', null=True, blank=True,
     )
     modele_casque = models.ForeignKey(
         ModeleCasque, on_delete=models.PROTECT, related_name='+', null=True, blank=True,
@@ -70,6 +70,7 @@ class LigneFacture(models.Model):
     quantite = models.PositiveIntegerField(default=1)
     prix_unitaire = models.DecimalField(max_digits=12, decimal_places=2)
     montant = models.DecimalField(max_digits=12, decimal_places=2)
+    avec_carte_grise = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         self.montant = self.quantite * self.prix_unitaire
@@ -94,7 +95,9 @@ class Declaration(models.Model):
 
 
 class CarteGrise(models.Model):
-    facture = models.OneToOneField(Facture, on_delete=models.CASCADE, related_name='carte_grise')
+    ligne_facture = models.OneToOneField(
+        LigneFacture, on_delete=models.CASCADE, related_name='carte_grise',
+    )
     numero_dossier = models.CharField(max_length=50, blank=True)
     fichier = models.FileField(upload_to='cartes_grises/', null=True, blank=True)
     date_soumission = models.DateField(auto_now_add=True)
@@ -116,7 +119,7 @@ class CarteGrise(models.Model):
         return self.date_retrait is not None
 
     def __str__(self):
-        return f"Carte grise {self.facture.numero_facture}"
+        return f"Carte grise {self.ligne_facture.facture.numero_facture} ({self.ligne_facture})"
 
 
 class EnvoiDepot(models.Model):

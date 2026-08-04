@@ -49,7 +49,7 @@ class ClientViewSet(AgenceScopedViewSet):
     def historique(self, request, pk=None):
         client = self.get_object()
         factures = client.factures.select_related('agence').prefetch_related(
-            'lignes', 'versements', 'carte_grise',
+            'lignes', 'lignes__carte_grise', 'versements',
         )
         data = []
         for facture in factures:
@@ -57,7 +57,9 @@ class ClientViewSet(AgenceScopedViewSet):
                 (v.montant for v in facture.versements.all() if v.statut == Versement.Statut.VALIDE),
                 start=0,
             )
-            carte_grise = getattr(facture, 'carte_grise', None)
+            cartes_grises = [
+                ligne.carte_grise for ligne in facture.lignes.all() if getattr(ligne, 'carte_grise', None)
+            ]
             data.append({
                 'facture_id': facture.id,
                 'numero_facture': facture.numero_facture,
@@ -66,7 +68,8 @@ class ClientViewSet(AgenceScopedViewSet):
                 'total': str(facture.total),
                 'total_verse': str(total_verse),
                 'solde': str(facture.total - total_verse),
-                'carte_grise_retiree': carte_grise.retiree if carte_grise else None,
+                'nb_cartes_grises': len(cartes_grises),
+                'cartes_grises_en_attente': sum(1 for c in cartes_grises if not c.retiree),
             })
         return Response({'client': ClientSerializer(client).data, 'factures': data})
 
@@ -77,20 +80,20 @@ class ClientViewSet(AgenceScopedViewSet):
 
         cartes = CarteGrise.objects.filter(
             date_retrait__isnull=True, date_soumission__lte=seuil_date,
-        ).select_related('facture', 'facture__client', 'facture__agence')
+        ).select_related('ligne_facture__facture', 'ligne_facture__facture__client', 'ligne_facture__facture__agence')
         quittances = Quittance.objects.filter(
             date_retrait__isnull=True, date_soumission__lte=seuil_date,
         ).select_related('facture', 'facture__client', 'facture__agence')
         if agence_id:
-            cartes = cartes.filter(facture__agence_id=agence_id)
+            cartes = cartes.filter(ligne_facture__facture__agence_id=agence_id)
             quittances = quittances.filter(facture__agence_id=agence_id)
 
         relances = [
             {
                 'type': 'carte_grise',
-                'client': carte.facture.client.nom,
-                'facture': carte.facture.numero_facture,
-                'agence': carte.facture.agence.nom,
+                'client': carte.ligne_facture.facture.client.nom,
+                'facture': carte.ligne_facture.facture.numero_facture,
+                'agence': carte.ligne_facture.facture.agence.nom,
                 'jours_en_attente': (date.today() - carte.date_soumission).days,
             }
             for carte in cartes
@@ -246,7 +249,9 @@ def generer_numero_facture(agence):
 
 
 class FactureViewSet(AgenceScopedViewSet):
-    queryset = Facture.objects.select_related('agence', 'client', 'cree_par').prefetch_related('lignes', 'versements')
+    queryset = Facture.objects.select_related('agence', 'client', 'cree_par').prefetch_related(
+        'lignes', 'lignes__carte_grise', 'versements',
+    )
     serializer_class = FactureSerializer
 
     def get_queryset(self):
@@ -431,12 +436,14 @@ class CarteGriseViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = CarteGrise.objects.select_related('facture', 'facture__agence')
+        qs = CarteGrise.objects.select_related(
+            'ligne_facture__facture', 'ligne_facture__facture__agence', 'ligne_facture__moto',
+        )
         if user.role != Utilisateur.Role.ADMIN:
-            qs = qs.filter(facture__agence=user.agence)
+            qs = qs.filter(ligne_facture__facture__agence=user.agence)
         facture_id = self.request.query_params.get('facture')
         if facture_id:
-            qs = qs.filter(facture_id=facture_id)
+            qs = qs.filter(ligne_facture__facture_id=facture_id)
         return qs
 
     @action(detail=True, methods=['post'])

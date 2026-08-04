@@ -127,6 +127,71 @@ function AnnulerVersementModal({ versement, onClose, onSuccess }) {
   )
 }
 
+function CarteGriseCard({ carteGrise, onEdit, onMarquerRecue, onRetirer, onUploadDone, erreur }) {
+  return (
+    <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="text-base font-semibold text-slate-800">
+            Dossier {carteGrise.numero_dossier || '-'}
+          </span>
+          <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+            carteGrise.retiree ? 'bg-green-100 text-green-700'
+              : carteGrise.recue ? 'bg-blue-100 text-blue-700'
+                : 'bg-amber-100 text-amber-700'
+          }`}>
+            {carteGrise.retiree ? 'Retiree' : carteGrise.recue ? 'Recue' : 'En attente'}
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onEdit} className="px-3 py-1.5 text-xs border border-slate-300 rounded hover:bg-white">
+            Modifier
+          </button>
+          {!carteGrise.recue && (
+            <button onClick={onMarquerRecue} className="px-3 py-1.5 text-xs border border-slate-300 rounded hover:bg-white">
+              Marquer recue
+            </button>
+          )}
+          {!carteGrise.retiree && (
+            <button onClick={onRetirer} className="px-3 py-1.5 text-xs bg-slate-800 text-white rounded hover:bg-slate-700">
+              Marquer retiree
+            </button>
+          )}
+        </div>
+      </div>
+
+      {carteGrise.retiree && (
+        <div className="mt-3 text-xs text-slate-600 bg-white border border-slate-200 rounded px-3 py-2">
+          Retiree le <span className="font-medium text-slate-800">{formatDateTime(carteGrise.date_retrait)}</span>
+          {' '}par <span className="font-medium text-slate-800">{carteGrise.retirer_nom || '-'}</span>
+          {' '}({carteGrise.retirer_telephone || '-'})
+        </div>
+      )}
+
+      {carteGrise.commentaire && (
+        <p className="mt-3 text-xs text-slate-500 italic">{carteGrise.commentaire}</p>
+      )}
+
+      <div className="mt-4 pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        {carteGrise.fichier ? (
+          <a href={carteGrise.fichier} target="_blank" rel="noreferrer" className="text-xs text-slate-600 hover:text-slate-900 underline">
+            Voir le fichier scanne
+          </a>
+        ) : (
+          <span className="text-xs text-slate-400">Aucun fichier scanne</span>
+        )}
+        <UploadFichier
+          resource="cartes-grises"
+          id={carteGrise.id}
+          label={carteGrise.fichier ? 'Remplacer le scan' : 'Uploader le scan'}
+          onDone={onUploadDone}
+        />
+      </div>
+      {erreur && <p className="text-red-600 text-xs mt-2">{erreur}</p>}
+    </div>
+  )
+}
+
 function UploadFichier({ resource, id, onDone, label = 'Uploader le scan' }) {
   const [file, setFile] = useState(null)
   const [erreur, setErreur] = useState(null)
@@ -182,6 +247,7 @@ export default function FactureDetailPage() {
   const { create: creerQuittance } = useResourceMutations('quittances')
 
   const [modal, setModal] = useState(null)
+  const [carteGriseModal, setCarteGriseModal] = useState(null)
   const [retraitTarget, setRetraitTarget] = useState(null)
   const [erreurRecue, setErreurRecue] = useState(null)
   const [annulerFacture, setAnnulerFacture] = useState(false)
@@ -208,7 +274,8 @@ export default function FactureDetailPage() {
     return <p className="text-slate-500 text-sm">Chargement...</p>
   }
 
-  const carteGrise = cartesGrises?.[0]
+  const cartesGriseParLigneId = new Map((cartesGrises ?? []).map((cg) => [cg.ligne_facture, cg]))
+  const lignesMotos = facture.lignes.filter((l) => l.moto_numero_serie)
 
   return (
     <div className="max-w-4xl space-y-8">
@@ -318,86 +385,37 @@ export default function FactureDetailPage() {
       </div>
 
       <div>
-        <h2 className="text-sm font-medium text-slate-700 mb-2">Carte grise</h2>
-        {carteGrise ? (
-          <div className="border border-slate-200 rounded-lg p-4 bg-slate-50">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="text-base font-semibold text-slate-800">
-                  Dossier {carteGrise.numero_dossier || '-'}
-                </span>
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                  carteGrise.retiree ? 'bg-green-100 text-green-700'
-                    : carteGrise.recue ? 'bg-blue-100 text-blue-700'
-                      : 'bg-amber-100 text-amber-700'
-                }`}>
-                  {carteGrise.retiree ? 'Retiree' : carteGrise.recue ? 'Recue' : 'En attente'}
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setModal('carte_grise_edit')}
-                  className="px-3 py-1.5 text-xs border border-slate-300 rounded hover:bg-white"
-                >
-                  Modifier
-                </button>
-                {!carteGrise.recue && (
-                  <button
-                    onClick={() => marquerRecue(carteGrise.id)}
-                    className="px-3 py-1.5 text-xs border border-slate-300 rounded hover:bg-white"
-                  >
-                    Marquer recue
-                  </button>
-                )}
-                {!carteGrise.retiree && (
-                  <button
-                    onClick={() => setRetraitTarget({ resource: 'cartes-grises', item: carteGrise })}
-                    className="px-3 py-1.5 text-xs bg-slate-800 text-white rounded hover:bg-slate-700"
-                  >
-                    Marquer retiree
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {carteGrise.retiree && (
-              <div className="mt-3 text-xs text-slate-600 bg-white border border-slate-200 rounded px-3 py-2">
-                Retiree le <span className="font-medium text-slate-800">{formatDateTime(carteGrise.date_retrait)}</span>
-                {' '}par <span className="font-medium text-slate-800">{carteGrise.retirer_nom || '-'}</span>
-                {' '}({carteGrise.retirer_telephone || '-'})
-              </div>
-            )}
-
-            {carteGrise.commentaire && (
-              <p className="mt-3 text-xs text-slate-500 italic">{carteGrise.commentaire}</p>
-            )}
-
-            <div className="mt-4 pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
-              {carteGrise.fichier ? (
-                <a
-                  href={carteGrise.fichier}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs text-slate-600 hover:text-slate-900 underline"
-                >
-                  Voir le fichier scanne
-                </a>
-              ) : (
-                <span className="text-xs text-slate-400">Aucun fichier scanne</span>
-              )}
-              <UploadFichier
-                resource="cartes-grises"
-                id={carteGrise.id}
-                label={carteGrise.fichier ? 'Remplacer le scan' : 'Uploader le scan'}
-                onDone={invalider}
-              />
-            </div>
-            {erreurRecue && <p className="text-red-600 text-xs mt-2">{erreurRecue}</p>}
-          </div>
+        <h2 className="text-sm font-medium text-slate-700 mb-2">Cartes grises</h2>
+        {lignesMotos.length === 0 ? (
+          <p className="text-slate-500 text-sm">Aucune moto sur cette facture.</p>
         ) : (
-          <button onClick={() => setModal('carte_grise')} className="text-sm text-slate-600 hover:text-slate-900 underline">
-            + Creer le dossier carte grise
-          </button>
+          <div className="space-y-3">
+            {lignesMotos.map((ligne) => {
+              const carteGrise = cartesGriseParLigneId.get(ligne.id)
+              return (
+                <div key={ligne.id}>
+                  <p className="text-xs text-slate-500 mb-1">Moto {ligne.moto_numero_serie}</p>
+                  {carteGrise ? (
+                    <CarteGriseCard
+                      carteGrise={carteGrise}
+                      onEdit={() => setCarteGriseModal({ mode: 'edit', carteGrise })}
+                      onMarquerRecue={() => marquerRecue(carteGrise.id)}
+                      onRetirer={() => setRetraitTarget({ resource: 'cartes-grises', item: carteGrise })}
+                      onUploadDone={invalider}
+                      erreur={erreurRecue}
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setCarteGriseModal({ mode: 'create', ligneId: ligne.id })}
+                      className="text-sm text-slate-600 hover:text-slate-900 underline"
+                    >
+                      + Creer le dossier carte grise
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         )}
       </div>
 
@@ -447,31 +465,31 @@ export default function FactureDetailPage() {
         />
       )}
 
-      {modal === 'carte_grise' && (
+      {carteGriseModal?.mode === 'create' && (
         <FormModal
           title="Dossier carte grise"
           fields={[{ name: 'numero_dossier', label: 'Numero de dossier' }]}
           onSubmit={async (values) => {
-            await creerCarteGrise.mutateAsync({ ...values, facture: id })
+            await creerCarteGrise.mutateAsync({ ...values, ligne_facture: carteGriseModal.ligneId })
             invalider()
           }}
-          onClose={() => setModal(null)}
+          onClose={() => setCarteGriseModal(null)}
         />
       )}
 
-      {modal === 'carte_grise_edit' && (
+      {carteGriseModal?.mode === 'edit' && (
         <FormModal
           title="Modifier le dossier carte grise"
-          initialValues={carteGrise}
+          initialValues={carteGriseModal.carteGrise}
           fields={[
             { name: 'numero_dossier', label: 'Numero de dossier' },
             { name: 'commentaire', label: 'Commentaire', type: 'textarea' },
           ]}
           onSubmit={async (values) => {
-            await modifierCarteGrise.mutateAsync({ id: carteGrise.id, payload: values })
+            await modifierCarteGrise.mutateAsync({ id: carteGriseModal.carteGrise.id, payload: values })
             invalider()
           }}
-          onClose={() => setModal(null)}
+          onClose={() => setCarteGriseModal(null)}
         />
       )}
 

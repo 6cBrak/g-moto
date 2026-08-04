@@ -8,6 +8,7 @@ function ligneVide() {
     type: 'moto',
     type_moto: '',
     series: [''],
+    avecCarteGrise: [false],
     modele_casque: '',
     designation: '',
     quantite: 1,
@@ -50,7 +51,14 @@ export default function FactureCreatePage() {
 
   const majTypeMoto = (index, typeMotoId) => {
     setLignes((prev) => prev.map((ligne, i) => (
-      i === index ? { ...ligne, type_moto: typeMotoId, series: Array(ligne.quantite).fill('') } : ligne
+      i === index
+        ? {
+          ...ligne,
+          type_moto: typeMotoId,
+          series: Array(ligne.quantite).fill(''),
+          avecCarteGrise: Array(ligne.quantite).fill(false),
+        }
+        : ligne
     )))
   }
 
@@ -59,9 +67,10 @@ export default function FactureCreatePage() {
     setLignes((prev) => prev.map((ligne, i) => {
       if (i !== index) return ligne
       const series = [...ligne.series]
-      while (series.length < quantite) series.push('')
-      while (series.length > quantite) series.pop()
-      return { ...ligne, quantite, series }
+      const avecCarteGrise = [...ligne.avecCarteGrise]
+      while (series.length < quantite) { series.push(''); avecCarteGrise.push(false) }
+      while (series.length > quantite) { series.pop(); avecCarteGrise.pop() }
+      return { ...ligne, quantite, series, avecCarteGrise }
     }))
   }
 
@@ -71,6 +80,15 @@ export default function FactureCreatePage() {
       const series = [...ligne.series]
       series[slot] = motoId
       return { ...ligne, series }
+    }))
+  }
+
+  const majAvecCarteGrise = (index, slot, coche) => {
+    setLignes((prev) => prev.map((ligne, i) => {
+      if (i !== index) return ligne
+      const avecCarteGrise = [...ligne.avecCarteGrise]
+      avecCarteGrise[slot] = coche
+      return { ...ligne, avecCarteGrise }
     }))
   }
 
@@ -104,7 +122,10 @@ export default function FactureCreatePage() {
     try {
       const payloadLignes = lignes.flatMap((l) => {
         if (l.type === 'moto') {
-          return l.series.map((motoId) => ({ moto: motoId, quantite: 1, prix_unitaire: l.prix_unitaire }))
+          return l.series.map((motoId, i) => ({
+            moto: motoId, quantite: 1, prix_unitaire: l.prix_unitaire,
+            avec_carte_grise: l.avecCarteGrise[i] ?? false,
+          }))
         }
         const base = { quantite: Number(l.quantite) || 1, prix_unitaire: l.prix_unitaire }
         if (l.type === 'casque') return [{ ...base, modele_casque: l.modele_casque }]
@@ -277,6 +298,14 @@ export default function FactureCreatePage() {
                               </option>
                             ))}
                           </select>
+                          <label className="flex items-center gap-1.5 mt-1 text-xs text-slate-600">
+                            <input
+                              type="checkbox"
+                              checked={ligne.avecCarteGrise[slot] ?? false}
+                              onChange={(e) => majAvecCarteGrise(index, slot, e.target.checked)}
+                            />
+                            Avec carte grise
+                          </label>
                         </div>
                       )
                     })}

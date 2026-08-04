@@ -78,6 +78,53 @@ def purger_donnees_commerciales():
     return counts
 
 
+def calculer_fournisseurs_dus(agence_id=None):
+    """Etat des motos recues en depot (arrivages marques en_depot=True) par fournisseur.
+
+    Une moto en depot ne represente une dette envers le fournisseur qu'une
+    fois vendue (avant, elle n'est pas encore due). Le "reste a payer" tient
+    compte des reglements deja enregistres via SortieCaisse.
+    """
+    from caisse.models import SortieCaisse
+    from catalogue.models import Fournisseur
+    from stock.models import Moto
+
+    fournisseurs = Fournisseur.objects.filter(arrivages__en_depot=True).distinct()
+
+    dus = []
+    for fournisseur in fournisseurs:
+        motos = Moto.objects.filter(arrivage__fournisseur=fournisseur, arrivage__en_depot=True)
+        if agence_id:
+            motos = motos.filter(agence_id=agence_id)
+
+        en_stock = motos.filter(statut=Moto.Statut.EN_STOCK)
+        vendues = motos.filter(statut=Moto.Statut.VENDUE)
+        valeur_en_stock = en_stock.aggregate(total=Sum('prix_achat'))['total'] or Decimal('0')
+        valeur_due = vendues.aggregate(total=Sum('prix_achat'))['total'] or Decimal('0')
+
+        reglements = SortieCaisse.objects.filter(
+            fournisseur=fournisseur, motif=SortieCaisse.Motif.REGLEMENT_FOURNISSEUR,
+        )
+        if agence_id:
+            reglements = reglements.filter(agence_id=agence_id)
+        deja_regle = reglements.aggregate(total=Sum('montant'))['total'] or Decimal('0')
+
+        nb_en_stock = en_stock.count()
+        nb_vendues = vendues.count()
+        if nb_en_stock or nb_vendues or deja_regle:
+            dus.append({
+                'fournisseur_id': fournisseur.id,
+                'fournisseur_nom': fournisseur.nom,
+                'nb_motos_en_stock': nb_en_stock,
+                'valeur_en_stock': valeur_en_stock,
+                'nb_motos_vendues': nb_vendues,
+                'valeur_due': valeur_due,
+                'deja_regle': deja_regle,
+                'reste_a_payer': valeur_due - deja_regle,
+            })
+    return dus
+
+
 def calculer_clients_debiteurs(agence_id=None, nom=None):
     """Liste des clients dont le solde (facture - verse) est positif.
 

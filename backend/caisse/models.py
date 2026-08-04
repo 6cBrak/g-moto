@@ -68,11 +68,16 @@ class SessionCaisse(models.Model):
 class SortieCaisse(models.Model):
     class Motif(models.TextChoices):
         VERSEMENT_BANQUE = 'versement_banque', 'Versement en banque'
+        REGLEMENT_FOURNISSEUR = 'reglement_fournisseur', 'Reglement fournisseur'
         AUTRE = 'autre', 'Autre'
 
     agence = models.ForeignKey(Agence, on_delete=models.PROTECT, related_name='sorties_caisse')
     montant = models.DecimalField(max_digits=12, decimal_places=2)
-    motif = models.CharField(max_length=20, choices=Motif.choices, default=Motif.AUTRE)
+    motif = models.CharField(max_length=25, choices=Motif.choices, default=Motif.AUTRE)
+    fournisseur = models.ForeignKey(
+        'catalogue.Fournisseur', on_delete=models.PROTECT, related_name='reglements',
+        null=True, blank=True,
+    )
     description = models.CharField(max_length=255, blank=True)
     cree_par = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='sorties_caisse_creees',

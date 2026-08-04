@@ -168,6 +168,20 @@ class FactureAnnulationTests(FacturationTestBase):
         self.moto_a.refresh_from_db()
         self.assertEqual(self.moto_a.statut, Moto.Statut.EN_STOCK)
 
+    def test_moto_revendable_apres_annulation(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        annulation = self.client.post(reverse('facture-annuler', args=[self.facture.id]))
+        self.assertEqual(annulation.status_code, status.HTTP_200_OK, annulation.data)
+
+        revente = self.client.post(reverse('facture-list'), {
+            'client': self.client_a.id,
+            'lignes': [{'moto': self.moto_a.id, 'quantite': 1, 'prix_unitaire': '1000000'}],
+        }, format='json')
+        self.assertEqual(revente.status_code, status.HTTP_201_CREATED, revente.data)
+
+        self.moto_a.refresh_from_db()
+        self.assertEqual(self.moto_a.statut, Moto.Statut.VENDUE)
+
     def test_annuler_deux_fois_refuse(self):
         self.client.force_authenticate(user=self.gerant_a)
         self.client.post(reverse('facture-annuler', args=[self.facture.id]))
@@ -214,6 +228,32 @@ class FactureAnnulationTests(FacturationTestBase):
         self.assertIsNone(depot_ligne.ligne_facture)
 
 
+class FactureAvecCarteGriseTests(FacturationTestBase):
+    def test_ligne_avec_carte_grise_cree_le_dossier_automatiquement(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.post(reverse('facture-list'), {
+            'client': self.client_a.id,
+            'lignes': [{
+                'moto': self.moto_a.id, 'quantite': 1, 'prix_unitaire': '1000000', 'avec_carte_grise': True,
+            }],
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        ligne = response.data['lignes'][0]
+        self.assertTrue(ligne['avec_carte_grise'])
+        self.assertIsNotNone(ligne['carte_grise_id'])
+        self.assertTrue(CarteGrise.objects.filter(id=ligne['carte_grise_id']).exists())
+
+    def test_ligne_sans_carte_grise_ne_cree_pas_de_dossier(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.post(reverse('facture-list'), {
+            'client': self.client_a.id,
+            'lignes': [{'moto': self.moto_a.id, 'quantite': 1, 'prix_unitaire': '1000000'}],
+        }, format='json')
+        ligne = response.data['lignes'][0]
+        self.assertFalse(ligne['avec_carte_grise'])
+        self.assertIsNone(ligne['carte_grise_id'])
+
+
 class CarteGriseTests(FacturationTestBase):
     def setUp(self):
         super().setUp()
@@ -223,10 +263,11 @@ class CarteGriseTests(FacturationTestBase):
             'lignes': [{'moto': self.moto_a.id, 'quantite': 1, 'prix_unitaire': '1000000'}],
         }, format='json')
         self.facture = Facture.objects.get(id=creation.data['id'])
+        self.ligne = self.facture.lignes.first()
 
     def test_create_and_retirer_carte_grise(self):
         response = self.client.post(reverse('cartegrise-list'), {
-            'facture': self.facture.id, 'numero_dossier': 'CG-001',
+            'ligne_facture': self.ligne.id, 'numero_dossier': 'CG-001',
         })
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertFalse(response.data['retiree'])
@@ -244,8 +285,9 @@ class CarteGriseTests(FacturationTestBase):
             'client': self.client_a.id,
             'lignes': [{'moto': moto2.id, 'quantite': 1, 'prix_unitaire': '500000'}],
         }, format='json')
-        CarteGrise.objects.create(facture_id=autre_facture_resp.data['id'], numero_dossier='CG-AUTRE')
-        self.client.post(reverse('cartegrise-list'), {'facture': self.facture.id, 'numero_dossier': 'CG-001'})
+        autre_facture = Facture.objects.get(id=autre_facture_resp.data['id'])
+        CarteGrise.objects.create(ligne_facture=autre_facture.lignes.first(), numero_dossier='CG-AUTRE')
+        self.client.post(reverse('cartegrise-list'), {'ligne_facture': self.ligne.id, 'numero_dossier': 'CG-001'})
 
         response = self.client.get(reverse('cartegrise-list'), {'facture': self.facture.id})
         self.assertEqual(response.data['count'], 1)
@@ -254,13 +296,13 @@ class CarteGriseTests(FacturationTestBase):
     def test_vendeur_b_cannot_attach_carte_grise_to_other_agence_facture(self):
         self.client.force_authenticate(user=self.vendeur_b)
         response = self.client.post(reverse('cartegrise-list'), {
-            'facture': self.facture.id, 'numero_dossier': 'CG-002',
+            'ligne_facture': self.ligne.id, 'numero_dossier': 'CG-002',
         })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_recevoir_puis_retirer_avec_nom_et_telephone(self):
         creation = self.client.post(reverse('cartegrise-list'), {
-            'facture': self.facture.id, 'numero_dossier': 'CG-003',
+            'ligne_facture': self.ligne.id, 'numero_dossier': 'CG-003',
         })
         carte_id = creation.data['id']
         self.assertFalse(creation.data['recue'])
@@ -429,7 +471,7 @@ class ClientRelancesTests(FacturationTestBase):
             'lignes': [{'moto': self.moto_a.id, 'quantite': 1, 'prix_unitaire': '1000000'}],
         }, format='json')
         facture = Facture.objects.get(id=creation.data['id'])
-        carte_grise = CarteGrise.objects.create(facture=facture, numero_dossier='CG-001')
+        carte_grise = CarteGrise.objects.create(ligne_facture=facture.lignes.first(), numero_dossier='CG-001')
         # Simule une soumission ancienne (au-dela du seuil de relance).
         CarteGrise.objects.filter(id=carte_grise.id).update(date_soumission='2020-01-01')
 
@@ -445,7 +487,7 @@ class ClientRelancesTests(FacturationTestBase):
             'lignes': [{'moto': self.moto_a.id, 'quantite': 1, 'prix_unitaire': '1000000'}],
         }, format='json')
         facture = Facture.objects.get(id=creation.data['id'])
-        CarteGrise.objects.create(facture=facture, numero_dossier='CG-002')
+        CarteGrise.objects.create(ligne_facture=facture.lignes.first(), numero_dossier='CG-002')
 
         response = self.client.get(reverse('client-relances'))
         self.assertEqual(len(response.data), 0)

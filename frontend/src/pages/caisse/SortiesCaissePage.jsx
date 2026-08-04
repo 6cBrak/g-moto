@@ -8,12 +8,14 @@ import { formatDateTime, formatMontant } from '../../lib/format'
 
 const MOTIFS = [
   { value: 'versement_banque', label: 'Versement en banque' },
+  { value: 'reglement_fournisseur', label: 'Reglement fournisseur' },
   { value: 'autre', label: 'Autre' },
 ]
 
 export default function SortiesCaissePage() {
   const user = useAuthStore((state) => state.user)
   const { data: agences } = useResourceList('agences', {}, { enabled: user?.role === 'admin' })
+  const { data: fournisseurs } = useResourceList('fournisseurs')
   const [filtres, setFiltres] = useState({})
   const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v))
   const { data: sorties, isLoading } = useResourceList('sorties-caisse', params)
@@ -23,6 +25,12 @@ export default function SortiesCaissePage() {
   const fields = [
     { name: 'montant', label: 'Montant', type: 'number', step: '0.01', required: true },
     { name: 'motif', label: 'Motif', type: 'select', required: true, options: MOTIFS },
+    {
+      name: 'fournisseur',
+      label: 'Fournisseur (si reglement fournisseur)',
+      type: 'select',
+      options: (fournisseurs ?? []).map((f) => ({ value: f.id, label: f.nom })),
+    },
     { name: 'description', label: 'Description' },
   ]
   if (user?.role === 'admin') {
@@ -74,6 +82,7 @@ export default function SortiesCaissePage() {
           { key: 'date_sortie', label: 'Date', render: (r) => formatDateTime(r.date_sortie) },
           { key: 'agence_nom', label: 'Agence' },
           { key: 'motif', label: 'Motif', render: (r) => MOTIFS.find((m) => m.value === r.motif)?.label ?? r.motif },
+          { key: 'fournisseur_nom', label: 'Fournisseur', render: (r) => r.fournisseur_nom || '-' },
           { key: 'description', label: 'Description', render: (r) => r.description || '-' },
           { key: 'montant', label: 'Montant', render: (r) => `${formatMontant(r.montant)} F` },
           { key: 'cree_par_username', label: 'Cree par' },

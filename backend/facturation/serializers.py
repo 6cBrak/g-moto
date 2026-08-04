@@ -20,6 +20,16 @@ class FactureAgenceValidationMixin:
         return facture
 
 
+class LigneFactureAgenceValidationMixin:
+    """Empeche un non-admin de rattacher un document a une ligne de facture d'une autre agence."""
+
+    def validate_ligne_facture(self, ligne_facture):
+        user = self.context['request'].user
+        if user.role != Utilisateur.Role.ADMIN and ligne_facture.facture.agence_id != user.agence_id:
+            raise serializers.ValidationError("Cette ligne de facture n'appartient pas a votre agence.")
+        return ligne_facture
+
+
 class ClientSerializer(serializers.ModelSerializer):
     agence_nom = serializers.CharField(source='agence.nom', read_only=True)
 
@@ -39,13 +49,14 @@ class LigneFactureSerializer(serializers.ModelSerializer):
     moto_couleur_nom = serializers.CharField(source='moto.couleur.nom', read_only=True)
     modele_casque_nom = serializers.CharField(source='modele_casque.nom', read_only=True)
     arrivage_fichier_cmc = serializers.SerializerMethodField()
+    carte_grise_id = serializers.SerializerMethodField()
 
     class Meta:
         model = LigneFacture
         fields = [
             'id', 'moto', 'moto_numero_serie', 'moto_type_label', 'moto_couleur_nom',
             'modele_casque', 'modele_casque_nom', 'designation', 'quantite', 'prix_unitaire', 'montant',
-            'arrivage_fichier_cmc',
+            'arrivage_fichier_cmc', 'avec_carte_grise', 'carte_grise_id',
         ]
         read_only_fields = ['id', 'montant']
 
@@ -56,6 +67,10 @@ class LigneFactureSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         url = fichier.url
         return request.build_absolute_uri(url) if request else url
+
+    def get_carte_grise_id(self, obj):
+        carte_grise = getattr(obj, 'carte_grise', None)
+        return carte_grise.id if carte_grise else None
 
     def validate_moto(self, moto):
         if moto and moto.statut not in (Moto.Statut.EN_STOCK, Moto.Statut.EN_DEPOT):
@@ -135,6 +150,8 @@ class FactureSerializer(serializers.ModelSerializer):
                     utilisateur=request.user,
                     commentaire=f"Vente via facture {facture.numero_facture}",
                 )
+                if ligne.avec_carte_grise:
+                    CarteGrise.objects.create(ligne_facture=ligne)
         return facture
 
 
@@ -204,14 +221,18 @@ class DeclarationSerializer(FactureAgenceValidationMixin, serializers.ModelSeria
         read_only_fields = ['id']
 
 
-class CarteGriseSerializer(FactureAgenceValidationMixin, serializers.ModelSerializer):
+class CarteGriseSerializer(LigneFactureAgenceValidationMixin, serializers.ModelSerializer):
     recue = serializers.BooleanField(read_only=True)
     retiree = serializers.BooleanField(read_only=True)
+    facture = serializers.IntegerField(source='ligne_facture.facture_id', read_only=True)
+    facture_numero = serializers.CharField(source='ligne_facture.facture.numero_facture', read_only=True)
+    moto_numero_serie = serializers.CharField(source='ligne_facture.moto.numero_serie', read_only=True, default=None)
 
     class Meta:
         model = CarteGrise
         fields = [
-            'id', 'facture', 'numero_dossier', 'fichier', 'date_soumission', 'date_reception',
+            'id', 'ligne_facture', 'facture', 'facture_numero', 'moto_numero_serie',
+            'numero_dossier', 'fichier', 'date_soumission', 'date_reception',
             'recue', 'date_retrait', 'retirer_nom', 'retirer_telephone', 'retiree', 'commentaire',
         ]
         read_only_fields = ['id', 'date_soumission', 'date_reception', 'date_retrait', 'retirer_nom', 'retirer_telephone']

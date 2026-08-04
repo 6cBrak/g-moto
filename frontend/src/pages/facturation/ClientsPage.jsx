@@ -37,7 +37,11 @@ function HistoriqueClientModal({ client, onClose }) {
           { key: 'total', label: 'Total', render: (r) => `${formatMontant(r.total)} F` },
           { key: 'total_verse', label: 'Verse', render: (r) => `${formatMontant(r.total_verse)} F` },
           { key: 'solde', label: 'Solde', render: (r) => `${formatMontant(r.solde)} F` },
-          { key: 'carte_grise_retiree', label: 'Carte grise retiree', render: (r) => (r.carte_grise_retiree === null ? '-' : r.carte_grise_retiree ? 'Oui' : 'Non') },
+          {
+            key: 'cartes_grises_en_attente',
+            label: 'Cartes grises',
+            render: (r) => (r.nb_cartes_grises === 0 ? '-' : `${r.nb_cartes_grises - r.cartes_grises_en_attente}/${r.nb_cartes_grises} retiree(s)`),
+          },
         ]}
       />
 

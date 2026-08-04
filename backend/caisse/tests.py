@@ -8,7 +8,7 @@ from depenses.models import CategorieDepense, Depense
 from facturation.models import Client, Facture
 from stock.models import Arrivage, Moto
 
-from .models import SessionCaisse, Versement
+from .models import SessionCaisse, SortieCaisse, Versement
 
 
 class CaisseTestBase(APITestCase):
@@ -193,6 +193,65 @@ class VersementAnnulationTests(CaisseTestBase):
         self.client.force_authenticate(user=self.gerant_a)
         response = self.client.delete(reverse('versement-detail', args=[self.versement.id]))
         self.assertEqual(response.status_code, 405)
+
+
+class FournisseursDusTests(CaisseTestBase):
+    def _marquer_moto_a_en_depot(self, prix_achat):
+        # self.moto_a est deja vendue via la facture creee dans CaisseTestBase.setUp ;
+        # il faut rafraichir avant de la re-sauver pour ne pas ecraser son statut 'vendue'.
+        self.arrivage_a.en_depot = True
+        self.arrivage_a.save()
+        self.moto_a.refresh_from_db()
+        self.moto_a.prix_achat = prix_achat
+        self.moto_a.save()
+
+    def test_arrivage_normal_napparait_pas_dans_le_rapport(self):
+        self.moto_a.refresh_from_db()
+        self.moto_a.prix_achat = '800000'
+        self.moto_a.save()
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.get(reverse('caisse-fournisseurs-dus'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [])
+
+    def test_moto_en_depot_vendue_apparait_comme_due(self):
+        self._marquer_moto_a_en_depot('800000')
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.get(reverse('caisse-fournisseurs-dus'))
+        self.assertEqual(len(response.data), 1)
+        entry = response.data[0]
+        self.assertEqual(entry['fournisseur_nom'], self.fournisseur.nom)
+        self.assertEqual(entry['nb_motos_vendues'], 1)
+        self.assertEqual(entry['valeur_due'], '800000.00')
+        self.assertEqual(entry['deja_regle'], '0')
+        self.assertEqual(entry['reste_a_payer'], '800000.00')
+
+    def test_reglement_reduit_le_reste_a_payer(self):
+        self._marquer_moto_a_en_depot('800000')
+        SortieCaisse.objects.create(
+            agence=self.agence_a, montant='500000',
+            motif=SortieCaisse.Motif.REGLEMENT_FOURNISSEUR, fournisseur=self.fournisseur,
+            cree_par=self.gerant_a,
+        )
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.get(reverse('caisse-fournisseurs-dus'))
+        entry = response.data[0]
+        self.assertEqual(entry['deja_regle'], '500000.00')
+        self.assertEqual(entry['reste_a_payer'], '300000.00')
+
+    def test_moto_en_depot_non_vendue_compte_en_stock(self):
+        self._marquer_moto_a_en_depot('800000')
+        moto2 = Moto.objects.create(
+            numero_serie='SN-A-0002', type_moto=self.type_moto, couleur=self.couleur,
+            arrivage=self.arrivage_a, agence=self.agence_a, prix_achat='700000',
+        )
+        self.client.force_authenticate(user=self.gerant_a)
+        response = self.client.get(reverse('caisse-fournisseurs-dus'))
+        entry = response.data[0]
+        self.assertEqual(entry['nb_motos_en_stock'], 1)
+        self.assertEqual(entry['valeur_en_stock'], '700000.00')
+        self.assertEqual(entry['nb_motos_vendues'], 1)
+        self.assertEqual(entry['valeur_due'], '800000.00')
 
 
 class RapportsTests(CaisseTestBase):

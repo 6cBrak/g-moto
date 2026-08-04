@@ -14,6 +14,10 @@ class Arrivage(models.Model):
     montant_facture = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     fichier_cmc = models.FileField(upload_to='cmc/', null=True, blank=True)
     commentaire = models.TextField(blank=True)
+    en_depot = models.BooleanField(
+        default=False,
+        help_text="Motos recues en depot chez le fournisseur, a regler seulement une fois vendues.",
+    )
     cree_par = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='arrivages_crees',
     )

@@ -43,12 +43,13 @@ class VersementSerializer(FactureAgenceValidationMixin, serializers.ModelSeriali
 class SortieCaisseSerializer(serializers.ModelSerializer):
     agence_nom = serializers.CharField(source='agence.nom', read_only=True)
     cree_par_username = serializers.CharField(source='cree_par.username', read_only=True)
+    fournisseur_nom = serializers.CharField(source='fournisseur.nom', read_only=True, default=None)
 
     class Meta:
         model = SortieCaisse
         fields = [
-            'id', 'agence', 'agence_nom', 'montant', 'motif', 'description',
-            'cree_par', 'cree_par_username', 'date_sortie',
+            'id', 'agence', 'agence_nom', 'montant', 'motif', 'fournisseur', 'fournisseur_nom',
+            'description', 'cree_par', 'cree_par_username', 'date_sortie',
         ]
         read_only_fields = ['id', 'cree_par', 'date_sortie']
         extra_kwargs = {'agence': {'required': False}}

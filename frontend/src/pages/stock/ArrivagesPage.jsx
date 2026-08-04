@@ -237,6 +237,7 @@ export default function ArrivagesPage() {
     { name: 'numero_facture', label: 'Numero facture' },
     { name: 'fichier_cmc', label: 'Fichier CMC scanne', type: 'file' },
     { name: 'commentaire', label: 'Commentaire', type: 'textarea' },
+    { name: 'en_depot', label: 'Recu en depot (pas encore paye)', type: 'checkbox' },
   ]
 
   if (user?.role === 'admin') {
@@ -264,6 +265,13 @@ export default function ArrivagesPage() {
           { key: 'date_arrivage', label: 'Date', render: (r) => formatDate(r.date_arrivage) },
           { key: 'nb_motos', label: 'Nb motos' },
           { key: 'montant_facture', label: 'Montant facture (calcule)', render: (r) => `${formatMontant(r.montant_facture)} F` },
+          {
+            key: 'en_depot',
+            label: 'Depot',
+            render: (r) => (r.en_depot
+              ? <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">En depot</span>
+              : '-'),
+          },
         ]}
         fields={fields}
       />

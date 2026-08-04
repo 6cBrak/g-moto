@@ -19,7 +19,9 @@ from reportlab.pdfgen import canvas
 from core.models import Agence, Utilisateur
 from core.pdf_utils import dessiner_entete
 from core.permissions import IsAdminOrGerant
-from core.utils import appliquer_periode, calculer_clients_debiteurs, resolve_agence_filter
+from core.utils import (
+    appliquer_periode, calculer_clients_debiteurs, calculer_fournisseurs_dus, resolve_agence_filter,
+)
 from core.viewsets import AgenceScopedViewSet
 from depenses.models import Depense
 from facturation.models import Facture, LigneFacture
@@ -342,6 +344,24 @@ class ClientsDebiteursView(APIView):
                 'solde': str(d['solde']),
             }
             for d in debiteurs
+        ])
+
+
+class FournisseursDusView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        agence_id = resolve_agence_filter(request)
+        dus = calculer_fournisseurs_dus(agence_id)
+        return Response([
+            {
+                **d,
+                'valeur_en_stock': str(d['valeur_en_stock']),
+                'valeur_due': str(d['valeur_due']),
+                'deja_regle': str(d['deja_regle']),
+                'reste_a_payer': str(d['reste_a_payer']),
+            }
+            for d in dus
         ])
 
 

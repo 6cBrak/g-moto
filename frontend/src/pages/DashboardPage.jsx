@@ -126,6 +126,13 @@ export default function DashboardPage() {
           sub={`${kpis?.reste_a_payer?.nb_clients ?? 0} client(s) debiteur(s)`}
         />
         <KpiCard
+          to="/caisse/rapports"
+          label="Du aux fournisseurs (depot)"
+          value={v(`${formatMontant(kpis?.du_fournisseurs?.total)} F`)}
+          sub={`${kpis?.du_fournisseurs?.nb_fournisseurs ?? 0} fournisseur(s)`}
+          tone={Number(kpis?.du_fournisseurs?.total) > 0 ? 'warning' : 'default'}
+        />
+        <KpiCard
           to="/depenses"
           label="Depenses du mois"
           value={v(`${formatMontant(kpis?.depenses_du_mois)} F`)}

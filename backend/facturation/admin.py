@@ -30,7 +30,7 @@ class DeclarationAdmin(admin.ModelAdmin):
 
 @admin.register(CarteGrise)
 class CarteGriseAdmin(admin.ModelAdmin):
-    list_display = ('facture', 'numero_dossier', 'date_soumission', 'date_retrait')
+    list_display = ('ligne_facture', 'numero_dossier', 'date_soumission', 'date_retrait')
     list_filter = ('date_retrait',)
 
 

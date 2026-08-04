@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-from django.db.models import Count, DecimalField, Q, Sum
+from django.db.models import Count, DecimalField, OuterRef, Q, Subquery, Sum
 from django.db.models.functions import Coalesce, TruncDay, TruncMonth
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -11,7 +11,9 @@ from apresvente.models import Entretien, Garantie
 from caisse.models import SortieCaisse, Versement
 from core.models import Agence
 from core.permissions import IsAdmin
-from core.utils import appliquer_periode, calculer_clients_debiteurs, resolve_agence_filter
+from core.utils import (
+    appliquer_periode, calculer_clients_debiteurs, calculer_fournisseurs_dus, resolve_agence_filter,
+)
 from depenses.models import Depense
 from facturation.models import CarteGrise, Facture, LigneFacture
 from stock.models import Arrivage, Moto
@@ -115,6 +117,9 @@ class DashboardKPIsView(APIView):
         debiteurs = calculer_clients_debiteurs(agence_id)
         total_reste_a_payer = sum((d['solde'] for d in debiteurs), Decimal('0'))
 
+        fournisseurs_dus = calculer_fournisseurs_dus(agence_id)
+        total_du_fournisseurs = sum((f['reste_a_payer'] for f in fournisseurs_dus), Decimal('0'))
+
         versements = Versement.objects.all()
         if agence_id:
             versements = versements.filter(agence_id=agence_id)
@@ -128,9 +133,9 @@ class DashboardKPIsView(APIView):
             round(total_encaissements / total_facture_global * 100, 1) if total_facture_global else None
         )
 
-        cartes_grises = CarteGrise.objects.filter(facture__statut=Facture.Statut.VALIDEE)
+        cartes_grises = CarteGrise.objects.filter(ligne_facture__facture__statut=Facture.Statut.VALIDEE)
         if agence_id:
-            cartes_grises = cartes_grises.filter(facture__agence_id=agence_id)
+            cartes_grises = cartes_grises.filter(ligne_facture__facture__agence_id=agence_id)
         plaques_produites = cartes_grises.filter(date_reception__isnull=False).count()
         plaques_retirees = cartes_grises.filter(date_retrait__isnull=False).count()
         plaques_a_retirer = cartes_grises.filter(date_reception__isnull=False, date_retrait__isnull=True).count()
@@ -158,6 +163,10 @@ class DashboardKPIsView(APIView):
             'reste_a_payer': {
                 'total': str(total_reste_a_payer),
                 'nb_clients': len(debiteurs),
+            },
+            'du_fournisseurs': {
+                'total': str(total_du_fournisseurs),
+                'nb_fournisseurs': sum(1 for f in fournisseurs_dus if f['reste_a_payer'] > 0),
             },
             'garanties_expirant_bientot': compter_garanties_expirant_bientot(agence_id),
             'entretiens_a_venir': compter_entretiens_a_venir(agence_id),
@@ -254,17 +263,18 @@ class RapportMargeArrivagesView(APIView):
             arrivages = arrivages.filter(Q(numero_bon__icontains=q) | Q(fournisseur__nom__icontains=q))
         arrivages = appliquer_periode(arrivages, 'date_arrivage', request)
 
+        # Sous-requete plutot qu'une jointure directe : un moto peut avoir plusieurs
+        # LigneFacture au fil du temps (vente annulee puis revendue), donc joindre
+        # motos->lignes_facture dans la meme annotate() ferait un fan-out qui
+        # doublerait aussi total_revient (Sum('motos__prix_achat')).
+        total_vente_subquery = LigneFacture.objects.filter(
+            moto__arrivage_id=OuterRef('pk'), facture__statut=Facture.Statut.VALIDEE,
+        ).values('moto__arrivage_id').annotate(total=Sum('montant')).values('total')
+
         arrivages = arrivages.annotate(
             nb_motos=Count('motos', distinct=True),
             total_revient=Coalesce(Sum('motos__prix_achat'), 0, output_field=decimal_zero),
-            total_vente=Coalesce(
-                Sum(
-                    'motos__ligne_facture__montant',
-                    filter=Q(motos__ligne_facture__facture__statut=Facture.Statut.VALIDEE),
-                ),
-                0,
-                output_field=decimal_zero,
-            ),
+            total_vente=Coalesce(Subquery(total_vente_subquery, output_field=decimal_zero), 0, output_field=decimal_zero),
         )
 
         return Response([
