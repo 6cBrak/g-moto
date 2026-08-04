@@ -20,7 +20,7 @@ export default function FactureCreatePage() {
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
   const { data: clients } = useResourceList('clients')
-  const { data: motos } = useResourceList('motos')
+  const { data: motos } = useResourceList('motos', { page_size: 1000 })
   const { data: typesMoto } = useResourceList('types-moto')
   const { data: casques } = useResourceList('modeles-casque')
   const { data: agences } = useResourceList('agences', {}, { enabled: user?.role === 'admin' })

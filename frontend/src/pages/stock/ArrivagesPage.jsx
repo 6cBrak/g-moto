@@ -19,7 +19,8 @@ const STATUTS = {
 function ArrivageMotosPanel({ arrivage, onClose }) {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
-  const { data: motosPage, isLoading } = useResourceListPaged('motos', { arrivage: arrivage.id, page })
+  const [q, setQ] = useState('')
+  const { data: motosPage, isLoading } = useResourceListPaged('motos', { arrivage: arrivage.id, page, q: q || undefined })
   const motos = motosPage?.results
   const { data: typesMoto } = useResourceList('types-moto')
   const { data: couleurs } = useResourceList('couleurs')
@@ -45,7 +46,7 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
 
   const handleTypeChange = (value) => {
     const type = (typesMoto ?? []).find((t) => String(t.id) === String(value))
-    setForm((prev) => ({ ...prev, type_moto: value, numero_serie: prev.numero_serie || type?.code || '' }))
+    setForm((prev) => ({ ...prev, type_moto: value, numero_serie: type?.code || '' }))
   }
 
   const handleSubmit = async (event) => {
@@ -83,31 +84,7 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
         </div>
       </div>
 
-      <DataTable
-        isLoading={isLoading}
-        rows={motos}
-        emptyMessage="Aucune moto pour cet arrivage."
-        columns={[
-          { key: 'numero_serie', label: 'N° serie' },
-          { key: 'type_moto_label', label: 'Type' },
-          { key: 'couleur_nom', label: 'Couleur' },
-          { key: 'immatriculation', label: 'Immatriculation', render: (r) => r.immatriculation || '-' },
-          { key: 'statut', label: 'Statut', render: (r) => STATUTS[r.statut] ?? r.statut },
-        ]}
-        actions={(row) => row.statut !== 'vendue' && (
-          <>
-            <button onClick={() => setEditTarget(row)} className="text-slate-600 hover:text-slate-900 text-sm">
-              Modifier
-            </button>
-            <button onClick={() => handleDelete(row)} className="text-red-600 hover:text-red-800 text-sm">
-              Supprimer
-            </button>
-          </>
-        )}
-      />
-      <Pagination page={page} onPageChange={setPage} count={motosPage?.count ?? 0} />
-
-      <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-3">
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-3">
         <div className="col-span-2 sm:col-span-1">
           <label className="block text-sm text-slate-600 mb-1">Type de moto</label>
           <select
@@ -172,6 +149,40 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
         </button>
       </form>
       {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+
+      <div className="mt-6 mb-3">
+        <label className="block text-sm text-slate-600 mb-1">Rechercher (type ou n° serie)</label>
+        <input
+          className="w-full sm:w-72 border border-slate-300 rounded px-3 py-2 text-sm"
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setPage(1) }}
+          placeholder="Ex: Yamaha, LB415..."
+        />
+      </div>
+
+      <DataTable
+        isLoading={isLoading}
+        rows={motos}
+        emptyMessage="Aucune moto pour cet arrivage."
+        columns={[
+          { key: 'numero_serie', label: 'N° serie' },
+          { key: 'type_moto_label', label: 'Type' },
+          { key: 'couleur_nom', label: 'Couleur' },
+          { key: 'immatriculation', label: 'Immatriculation', render: (r) => r.immatriculation || '-' },
+          { key: 'statut', label: 'Statut', render: (r) => STATUTS[r.statut] ?? r.statut },
+        ]}
+        actions={(row) => row.statut !== 'vendue' && (
+          <>
+            <button onClick={() => setEditTarget(row)} className="text-slate-600 hover:text-slate-900 text-sm">
+              Modifier
+            </button>
+            <button onClick={() => handleDelete(row)} className="text-red-600 hover:text-red-800 text-sm">
+              Supprimer
+            </button>
+          </>
+        )}
+      />
+      <Pagination page={page} onPageChange={setPage} count={motosPage?.count ?? 0} />
 
       {editTarget && (
         <FormModal

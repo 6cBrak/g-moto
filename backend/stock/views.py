@@ -98,7 +98,10 @@ class MotoViewSet(AgenceScopedViewSet):
             qs = qs.filter(statut=statut)
         q = self.request.query_params.get('q')
         if q:
-            qs = qs.filter(Q(numero_serie__icontains=q) | Q(immatriculation__icontains=q))
+            qs = qs.filter(
+                Q(numero_serie__icontains=q) | Q(immatriculation__icontains=q)
+                | Q(type_moto__nom__icontains=q) | Q(type_moto__marque__nom__icontains=q),
+            )
         return appliquer_periode(qs, 'date_creation__date', self.request)
 
     def perform_create(self, serializer):

@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../api/client'
-import { useResourceList, useResourceMutations } from '../../hooks/useResource'
+import { useResourceList, useResourceListPaged, useResourceMutations } from '../../hooks/useResource'
 import { useAuthStore } from '../../store/authStore'
 import DataTable from '../../components/DataTable'
 import FilterBar from '../../components/FilterBar'
 import FormModal from '../../components/FormModal'
 import Modal from '../../components/Modal'
+import Pagination from '../../components/Pagination'
 import { formatDateTime, formatMontant } from '../../lib/format'
 
 const STATUTS = {
@@ -84,8 +85,10 @@ function HistoriqueModal({ moto, onClose }) {
 export default function MotosPage() {
   const user = useAuthStore((state) => state.user)
   const [filtres, setFiltres] = useState({})
+  const [page, setPage] = useState(1)
   const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v))
-  const { data: motos, isLoading } = useResourceList('motos', params)
+  const { data: motosPage, isLoading } = useResourceListPaged('motos', { ...params, page })
+  const motos = motosPage?.results
   const { data: typesMoto } = useResourceList('types-moto')
   const { data: couleurs } = useResourceList('couleurs')
   const { data: arrivages } = useResourceList('arrivages')
@@ -165,7 +168,7 @@ export default function MotosPage() {
       <FilterBar
         filters={filterFields}
         values={filtres}
-        onChange={(name, value) => setFiltres((prev) => ({ ...prev, [name]: value }))}
+        onChange={(name, value) => { setFiltres((prev) => ({ ...prev, [name]: value })); setPage(1) }}
       />
 
       <DataTable
@@ -208,6 +211,7 @@ export default function MotosPage() {
           </>
         )}
       />
+      <Pagination page={page} onPageChange={setPage} count={motosPage?.count ?? 0} />
 
       {showCreate && (
         <FormModal
