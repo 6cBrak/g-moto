@@ -56,6 +56,7 @@ const navGroups = [
       { to: '/admin/agences', label: 'Agences', roles: ['admin'] },
       { to: '/admin/utilisateurs', label: 'Utilisateurs', roles: ['admin', 'gerant'] },
       { to: '/admin/comparatif-agences', label: 'Comparatif agences', roles: ['admin'] },
+      { to: '/admin/journal-activite', label: 'Journal d\'activite', roles: ROLES_GESTION },
       { to: '/admin/parametrage', label: 'Parametrage', roles: ['admin'] },
     ],
   },

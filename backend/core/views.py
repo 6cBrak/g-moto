@@ -3,10 +3,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Agence, Utilisateur
+from .models import Agence, JournalActivite, Utilisateur
 from .permissions import IsAdmin, IsAdminOrGerant
-from .serializers import AgenceSerializer, UtilisateurSerializer
-from .utils import compter_donnees_commerciales, purger_donnees_commerciales
+from .serializers import AgenceSerializer, JournalActiviteSerializer, UtilisateurSerializer
+from .utils import appliquer_periode, compter_donnees_commerciales, purger_donnees_commerciales
 
 
 class MeView(APIView):
@@ -62,6 +62,29 @@ class UtilisateurViewSet(viewsets.ModelViewSet):
             serializer.save(agence=user.agence)
         else:
             serializer.save()
+
+
+class JournalActiviteViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = JournalActiviteSerializer
+    permission_classes = [IsAuthenticated, IsAdminOrGerant]
+    queryset = JournalActivite.objects.select_related('agence')
+
+    def get_queryset(self):
+        qs = self.queryset
+        user = self.request.user
+        if user.role != Utilisateur.Role.ADMIN:
+            qs = qs.filter(agence=user.agence)
+        else:
+            agence_id = self.request.query_params.get('agence')
+            if agence_id:
+                qs = qs.filter(agence_id=agence_id)
+        utilisateur = self.request.query_params.get('utilisateur')
+        if utilisateur:
+            qs = qs.filter(utilisateur_username__icontains=utilisateur)
+        ressource = self.request.query_params.get('ressource')
+        if ressource:
+            qs = qs.filter(ressource=ressource)
+        return appliquer_periode(qs, 'date_action__date', self.request)
 
 
 class PurgeDonneesCommercialesView(APIView):

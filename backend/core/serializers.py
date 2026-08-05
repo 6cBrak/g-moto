@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Agence, Utilisateur
+from .models import Agence, JournalActivite, Utilisateur
 
 
 class AgenceSerializer(serializers.ModelSerializer):
@@ -41,3 +41,15 @@ class UtilisateurSerializer(serializers.ModelSerializer):
             instance.set_password(password)
         instance.save()
         return instance
+
+
+class JournalActiviteSerializer(serializers.ModelSerializer):
+    agence_nom = serializers.CharField(source='agence.nom', read_only=True, default=None)
+
+    class Meta:
+        model = JournalActivite
+        fields = [
+            'id', 'utilisateur_username', 'agence_nom', 'methode', 'ressource',
+            'objet_id', 'chemin', 'date_action',
+        ]
+        read_only_fields = fields

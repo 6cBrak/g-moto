@@ -26,6 +26,7 @@ import AgencesPage from './pages/admin/AgencesPage'
 import UtilisateursPage from './pages/admin/UtilisateursPage'
 import ComparatifAgencesPage from './pages/admin/ComparatifAgencesPage'
 import ParametragePage from './pages/admin/ParametragePage'
+import JournalActivitePage from './pages/admin/JournalActivitePage'
 
 function App() {
   return (
@@ -57,6 +58,7 @@ function App() {
             <Route path="/admin/utilisateurs" element={<UtilisateursPage />} />
             <Route path="/admin/comparatif-agences" element={<ComparatifAgencesPage />} />
             <Route path="/admin/parametrage" element={<ParametragePage />} />
+            <Route path="/admin/journal-activite" element={<JournalActivitePage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -47,3 +48,28 @@ class Utilisateur(AbstractUser):
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
+
+
+class JournalActivite(models.Model):
+    class Methode(models.TextChoices):
+        CREATION = 'creation', 'Creation'
+        MODIFICATION = 'modification', 'Modification'
+        SUPPRESSION = 'suppression', 'Suppression'
+        ACTION = 'action', 'Action'
+
+    utilisateur = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+',
+    )
+    utilisateur_username = models.CharField(max_length=150, blank=True)
+    agence = models.ForeignKey(Agence, on_delete=models.SET_NULL, null=True, related_name='+')
+    methode = models.CharField(max_length=20, choices=Methode.choices)
+    ressource = models.CharField(max_length=100, blank=True)
+    objet_id = models.CharField(max_length=50, blank=True)
+    chemin = models.CharField(max_length=255)
+    date_action = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date_action']
+
+    def __str__(self):
+        return f"{self.utilisateur_username} - {self.methode} {self.chemin}"
