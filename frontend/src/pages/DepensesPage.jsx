@@ -7,8 +7,8 @@ import { formatMontant, formatDate } from '../lib/format'
 
 export default function DepensesPage() {
   const user = useAuthStore((state) => state.user)
-  const { data: agences } = useResourceList('agences', {}, { enabled: user?.role === 'admin' })
-  const { data: categories } = useResourceList('categories-depense')
+  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
+  const { data: categories } = useResourceList('categories-depense', { page_size: 1000 })
   const [filtres, setFiltres] = useState({})
   const [showCategories, setShowCategories] = useState(false)
 

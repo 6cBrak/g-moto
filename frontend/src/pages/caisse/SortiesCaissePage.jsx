@@ -14,8 +14,8 @@ const MOTIFS = [
 
 export default function SortiesCaissePage() {
   const user = useAuthStore((state) => state.user)
-  const { data: agences } = useResourceList('agences', {}, { enabled: user?.role === 'admin' })
-  const { data: fournisseurs } = useResourceList('fournisseurs')
+  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
+  const { data: fournisseurs } = useResourceList('fournisseurs', { page_size: 1000 })
   const [filtres, setFiltres] = useState({})
   const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v))
   const { data: sorties, isLoading } = useResourceList('sorties-caisse', params)

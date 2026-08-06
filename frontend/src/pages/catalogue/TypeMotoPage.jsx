@@ -2,7 +2,7 @@ import CrudPage from '../../components/CrudPage'
 import { useResourceList } from '../../hooks/useResource'
 
 export default function TypeMotoPage({ canWrite }) {
-  const { data: marques } = useResourceList('marques')
+  const { data: marques } = useResourceList('marques', { page_size: 1000 })
 
   return (
     <CrudPage

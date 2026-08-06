@@ -72,7 +72,7 @@ export default function AppLayout() {
   const logout = useAuthStore((state) => state.logout)
   const agenceFiltre = useUiStore((state) => state.agenceFiltre)
   const setAgenceFiltre = useUiStore((state) => state.setAgenceFiltre)
-  const { data: agences } = useResourceList('agences', {}, { enabled: user?.role === 'admin' })
+  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
   const location = useLocation()
 
   const [openGroups, setOpenGroups] = useState(() => {

@@ -8,7 +8,7 @@ const ROLES = [
 ]
 
 export default function UtilisateursPage() {
-  const { data: agences } = useResourceList('agences')
+  const { data: agences } = useResourceList('agences', { page_size: 1000 })
 
   return (
     <CrudPage

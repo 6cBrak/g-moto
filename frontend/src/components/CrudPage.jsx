@@ -1,13 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import DataTable from './DataTable'
 import FormModal from './FormModal'
-import { useResourceList, useResourceMutations } from '../hooks/useResource'
+import Pagination from './Pagination'
+import { useResourceListPaged, useResourceMutations } from '../hooks/useResource'
 
 export default function CrudPage({ resource, title, columns, fields, canWrite = true, extraParams = {}, onRowClick, selectedId, filterBar }) {
-  const { data: rows, isLoading } = useResourceList(resource, extraParams)
+  const [page, setPage] = useState(1)
+  const { data: rowsPage, isLoading } = useResourceListPaged(resource, { ...extraParams, page })
+  const rows = rowsPage?.results
   const { create, update, remove } = useResourceMutations(resource)
   const [modalMode, setModalMode] = useState(null)
   const [editing, setEditing] = useState(null)
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setPage(1) }, [JSON.stringify(extraParams)])
 
   const handleSubmit = async (values) => {
     if (modalMode === 'create') {
@@ -62,6 +68,7 @@ export default function CrudPage({ resource, title, columns, fields, canWrite = 
           </>
         ) : undefined}
       />
+      <Pagination page={page} onPageChange={setPage} count={rowsPage?.count ?? 0} />
 
       {modalMode && (
         <FormModal

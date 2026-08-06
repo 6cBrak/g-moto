@@ -25,7 +25,7 @@ const STATUT_OPTIONS = [
 ]
 
 function TransfererModal({ moto, onClose }) {
-  const { data: agences } = useResourceList('agences')
+  const { data: agences } = useResourceList('agences', { page_size: 1000 })
   const queryClient = useQueryClient()
   const mutation = useMutation({
     mutationFn: (payload) => apiClient.post(`/motos/${moto.id}/transferer/`, payload),
@@ -89,10 +89,10 @@ export default function MotosPage() {
   const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v))
   const { data: motosPage, isLoading } = useResourceListPaged('motos', { ...params, page, page_size: 10 })
   const motos = motosPage?.results
-  const { data: typesMoto } = useResourceList('types-moto')
-  const { data: couleurs } = useResourceList('couleurs')
-  const { data: arrivages } = useResourceList('arrivages')
-  const { data: agences } = useResourceList('agences', {}, { enabled: user?.role === 'admin' })
+  const { data: typesMoto } = useResourceList('types-moto', { page_size: 1000 })
+  const { data: couleurs } = useResourceList('couleurs', { page_size: 1000 })
+  const { data: arrivages } = useResourceList('arrivages', { page_size: 1000 })
+  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
   const { create } = useResourceMutations('motos')
 
   const [showCreate, setShowCreate] = useState(false)

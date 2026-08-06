@@ -62,7 +62,7 @@ function HistoriqueClientModal({ client, onClose }) {
 
 function ClientsDebiteursPanel() {
   const user = useAuthStore((state) => state.user)
-  const { data: agences } = useResourceList('agences', {}, { enabled: user?.role === 'admin' })
+  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
   const [filtres, setFiltres] = useState({})
   const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v))
 
@@ -132,13 +132,13 @@ function RelancesPanel() {
 
 export default function ClientsPage() {
   const [segment, setSegment] = useState('')
-  const { data: clients, isLoading } = useResourceList('clients', segment ? { segment } : {})
+  const { data: clients, isLoading } = useResourceList('clients', { ...(segment ? { segment } : {}), page_size: 1000 })
   const { create, update } = useResourceMutations('clients')
   const [modalMode, setModalMode] = useState(null)
   const [editing, setEditing] = useState(null)
   const [historiqueTarget, setHistoriqueTarget] = useState(null)
   const user = useAuthStore((state) => state.user)
-  const { data: agences } = useResourceList('agences', {}, { enabled: user?.role === 'admin' })
+  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
 
   const clientFields = [
     { name: 'nom', label: 'Nom', required: true },

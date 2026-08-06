@@ -11,7 +11,7 @@ import { formatMontant } from '../../lib/format'
 export default function JournalCaissePage() {
   const user = useAuthStore((state) => state.user)
   const agenceFiltre = useUiStore((state) => state.agenceFiltre)
-  const { data: agences } = useResourceList('agences', {}, { enabled: user?.role === 'admin' && !agenceFiltre })
+  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' && !agenceFiltre })
   const [filtres, setFiltres] = useState({})
 
   const { data, isLoading } = useQuery({

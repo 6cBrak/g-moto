@@ -58,10 +58,10 @@ function EnvoiDepotPanel({ envoi, onClose }) {
 
 export default function DepotsPage() {
   const user = useAuthStore((state) => state.user)
-  const { data: envois, isLoading } = useResourceList('envois-depot')
-  const { data: clients } = useResourceList('clients')
-  const { data: motos } = useResourceList('motos')
-  const { data: agences } = useResourceList('agences', {}, { enabled: user?.role === 'admin' })
+  const { data: envois, isLoading } = useResourceList('envois-depot', { page_size: 1000 })
+  const { data: clients } = useResourceList('clients', { page_size: 1000 })
+  const { data: motos } = useResourceList('motos', { page_size: 1000 })
+  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
   const { create } = useResourceMutations('envois-depot')
 
   const [showCreate, setShowCreate] = useState(false)

@@ -7,8 +7,8 @@ import { formatDate } from '../../lib/format'
 
 export default function GarantiesPage() {
   const user = useAuthStore((state) => state.user)
-  const { data: motos } = useResourceList('motos')
-  const { data: agences } = useResourceList('agences', {}, { enabled: user?.role === 'admin' })
+  const { data: motos } = useResourceList('motos', { page_size: 1000 })
+  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
   const [filtres, setFiltres] = useState({})
   const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v))
 

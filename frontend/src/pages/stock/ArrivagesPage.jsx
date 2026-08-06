@@ -22,8 +22,8 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
   const [q, setQ] = useState('')
   const { data: motosPage, isLoading } = useResourceListPaged('motos', { arrivage: arrivage.id, page, q: q || undefined })
   const motos = motosPage?.results
-  const { data: typesMoto } = useResourceList('types-moto')
-  const { data: couleurs } = useResourceList('couleurs')
+  const { data: typesMoto } = useResourceList('types-moto', { page_size: 1000 })
+  const { data: couleurs } = useResourceList('couleurs', { page_size: 1000 })
   const { create, update, remove } = useResourceMutations('motos')
 
   const [form, setForm] = useState({ numero_serie: '', type_moto: '', couleur: '', prix_achat: '', immatriculation: '' })
@@ -220,8 +220,8 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
 
 export default function ArrivagesPage() {
   const user = useAuthStore((state) => state.user)
-  const { data: fournisseurs } = useResourceList('fournisseurs')
-  const { data: agences } = useResourceList('agences')
+  const { data: fournisseurs } = useResourceList('fournisseurs', { page_size: 1000 })
+  const { data: agences } = useResourceList('agences', { page_size: 1000 })
   const [selected, setSelected] = useState(null)
 
   const fields = [
