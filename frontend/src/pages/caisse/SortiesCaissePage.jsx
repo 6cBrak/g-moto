@@ -19,7 +19,7 @@ export default function SortiesCaissePage() {
   const { data: fournisseurs } = useResourceListAll('fournisseurs')
   const [filtres, setFiltres] = useState({})
   const [page, setPage] = useState(1)
-  const params = { ...Object.fromEntries(Object.entries(filtres).filter(([, v]) => v)), page }
+  const params = { ...Object.fromEntries(Object.entries(filtres).filter(([, v]) => v)), page, page_size: 10 }
   const { data: sortiesPage, isLoading } = useResourceListPaged('sorties-caisse', params)
   const sorties = sortiesPage?.results
   const { create } = useResourceMutations('sorties-caisse')
@@ -91,7 +91,7 @@ export default function SortiesCaissePage() {
           { key: 'cree_par_username', label: 'Cree par' },
         ]}
       />
-      <Pagination page={page} onPageChange={setPage} count={sortiesPage?.count ?? 0} />
+      <Pagination page={page} onPageChange={setPage} count={sortiesPage?.count ?? 0} pageSize={10} />
 
       {showCreate && (
         <FormModal

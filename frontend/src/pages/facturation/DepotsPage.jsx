@@ -60,7 +60,7 @@ function EnvoiDepotPanel({ envoi, onClose }) {
 export default function DepotsPage() {
   const user = useAuthStore((state) => state.user)
   const [page, setPage] = useState(1)
-  const { data: envoisPage, isLoading } = useResourceListPaged('envois-depot', { page })
+  const { data: envoisPage, isLoading } = useResourceListPaged('envois-depot', { page, page_size: 10 })
   const envois = envoisPage?.results
   const { data: clients } = useResourceListAll('clients')
   const { data: motos } = useResourceListAll('motos')
@@ -207,7 +207,7 @@ export default function DepotsPage() {
           },
         ]}
       />
-      <Pagination page={page} onPageChange={setPage} count={envoisPage?.count ?? 0} />
+      <Pagination page={page} onPageChange={setPage} count={envoisPage?.count ?? 0} pageSize={10} />
 
       {selected && <EnvoiDepotPanel envoi={selected} onClose={() => setSelectedId(null)} />}
     </div>

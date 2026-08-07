@@ -25,7 +25,7 @@ export default function EntretiensPage() {
   const user = useAuthStore((state) => state.user)
   const [filtres, setFiltres] = useState({})
   const [page, setPage] = useState(1)
-  const params = { ...Object.fromEntries(Object.entries(filtres).filter(([, v]) => v)), page }
+  const params = { ...Object.fromEntries(Object.entries(filtres).filter(([, v]) => v)), page, page_size: 10 }
   const { data: entretiensPage, isLoading } = useResourceListPaged('entretiens', params)
   const entretiens = entretiensPage?.results
   const { data: motos } = useResourceListAll('motos')
@@ -83,7 +83,7 @@ export default function EntretiensPage() {
           </button>
         )}
       />
-      <Pagination page={page} onPageChange={setPage} count={entretiensPage?.count ?? 0} />
+      <Pagination page={page} onPageChange={setPage} count={entretiensPage?.count ?? 0} pageSize={10} />
 
       {showCreate && (
         <FormModal

@@ -20,7 +20,7 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [q, setQ] = useState('')
-  const { data: motosPage, isLoading } = useResourceListPaged('motos', { arrivage: arrivage.id, page, q: q || undefined })
+  const { data: motosPage, isLoading } = useResourceListPaged('motos', { arrivage: arrivage.id, page, page_size: 10, q: q || undefined })
   const motos = motosPage?.results
   const { data: typesMoto } = useResourceListAll('types-moto')
   const { data: couleurs } = useResourceListAll('couleurs')
@@ -182,7 +182,7 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
           </>
         )}
       />
-      <Pagination page={page} onPageChange={setPage} count={motosPage?.count ?? 0} />
+      <Pagination page={page} onPageChange={setPage} count={motosPage?.count ?? 0} pageSize={10} />
 
       {editTarget && (
         <FormModal

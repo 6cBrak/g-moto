@@ -24,7 +24,7 @@ export default function JournalActivitePage() {
   const user = useAuthStore((state) => state.user)
   const [filtres, setFiltres] = useState({})
   const [page, setPage] = useState(1)
-  const params = { ...Object.fromEntries(Object.entries(filtres).filter(([, v]) => v)), page }
+  const params = { ...Object.fromEntries(Object.entries(filtres).filter(([, v]) => v)), page, page_size: 10 }
   const { data: journalPage, isLoading } = useResourceListPaged('journal-activite', params)
   const entries = journalPage?.results
 
@@ -63,7 +63,7 @@ export default function JournalActivitePage() {
           { key: 'chemin', label: 'Chemin' },
         ]}
       />
-      <Pagination page={page} onPageChange={setPage} count={journalPage?.count ?? 0} />
+      <Pagination page={page} onPageChange={setPage} count={journalPage?.count ?? 0} pageSize={10} />
     </div>
   )
 }

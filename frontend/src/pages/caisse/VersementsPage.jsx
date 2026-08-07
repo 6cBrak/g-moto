@@ -46,7 +46,7 @@ export default function VersementsPage() {
   const canAnnuler = user?.role === 'admin' || user?.role === 'gerant'
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
-  const { data: versementsPage, isLoading } = useResourceListPaged('versements', { page })
+  const { data: versementsPage, isLoading } = useResourceListPaged('versements', { page, page_size: 10 })
   const versements = versementsPage?.results
   const [annulerTarget, setAnnulerTarget] = useState(null)
 
@@ -90,7 +90,7 @@ export default function VersementsPage() {
           </>
         )}
       />
-      <Pagination page={page} onPageChange={setPage} count={versementsPage?.count ?? 0} />
+      <Pagination page={page} onPageChange={setPage} count={versementsPage?.count ?? 0} pageSize={10} />
 
       {annulerTarget && (
         <AnnulerVersementModal

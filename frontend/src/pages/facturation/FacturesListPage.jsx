@@ -18,7 +18,7 @@ export default function FacturesListPage() {
   const [filtres, setFiltres] = useState({})
   const [page, setPage] = useState(1)
 
-  const params = { ...Object.fromEntries(Object.entries(filtres).filter(([, v]) => v)), page }
+  const params = { ...Object.fromEntries(Object.entries(filtres).filter(([, v]) => v)), page, page_size: 10 }
   const { data: facturesPage, isLoading } = useResourceListPaged('factures', params)
   const factures = facturesPage?.results
 
@@ -67,7 +67,7 @@ export default function FacturesListPage() {
           </Link>
         )}
       />
-      <Pagination page={page} onPageChange={setPage} count={facturesPage?.count ?? 0} />
+      <Pagination page={page} onPageChange={setPage} count={facturesPage?.count ?? 0} pageSize={10} />
     </div>
   )
 }

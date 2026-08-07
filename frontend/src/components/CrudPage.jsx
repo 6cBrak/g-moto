@@ -6,7 +6,7 @@ import { useResourceListPaged, useResourceMutations } from '../hooks/useResource
 
 export default function CrudPage({ resource, title, columns, fields, canWrite = true, extraParams = {}, onRowClick, selectedId, filterBar }) {
   const [page, setPage] = useState(1)
-  const { data: rowsPage, isLoading } = useResourceListPaged(resource, { ...extraParams, page })
+  const { data: rowsPage, isLoading } = useResourceListPaged(resource, { ...extraParams, page, page_size: 10 })
   const rows = rowsPage?.results
   const { create, update, remove } = useResourceMutations(resource)
   const [modalMode, setModalMode] = useState(null)
@@ -68,7 +68,7 @@ export default function CrudPage({ resource, title, columns, fields, canWrite = 
           </>
         ) : undefined}
       />
-      <Pagination page={page} onPageChange={setPage} count={rowsPage?.count ?? 0} />
+      <Pagination page={page} onPageChange={setPage} count={rowsPage?.count ?? 0} pageSize={10} />
 
       {modalMode && (
         <FormModal

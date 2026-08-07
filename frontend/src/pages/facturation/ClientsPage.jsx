@@ -134,7 +134,7 @@ function RelancesPanel() {
 export default function ClientsPage() {
   const [segment, setSegment] = useState('')
   const [page, setPage] = useState(1)
-  const { data: clientsPage, isLoading } = useResourceListPaged('clients', { ...(segment ? { segment } : {}), page })
+  const { data: clientsPage, isLoading } = useResourceListPaged('clients', { ...(segment ? { segment } : {}), page, page_size: 10 })
   const clients = clientsPage?.results
   const { create, update } = useResourceMutations('clients')
   const [modalMode, setModalMode] = useState(null)
@@ -208,7 +208,7 @@ export default function ClientsPage() {
           </>
         )}
       />
-      <Pagination page={page} onPageChange={setPage} count={clientsPage?.count ?? 0} />
+      <Pagination page={page} onPageChange={setPage} count={clientsPage?.count ?? 0} pageSize={10} />
 
       {modalMode && (
         <FormModal
