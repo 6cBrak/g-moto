@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../api/client'
-import { useResourceList, useResourceListPaged, useResourceMutations } from '../../hooks/useResource'
+import { useResourceListAll, useResourceListPaged, useResourceMutations } from '../../hooks/useResource'
 import { useAuthStore } from '../../store/authStore'
 import DataTable from '../../components/DataTable'
 import FilterBar from '../../components/FilterBar'
@@ -25,7 +25,7 @@ const STATUT_OPTIONS = [
 ]
 
 function TransfererModal({ moto, onClose }) {
-  const { data: agences } = useResourceList('agences', { page_size: 1000 })
+  const { data: agences } = useResourceListAll('agences')
   const queryClient = useQueryClient()
   const mutation = useMutation({
     mutationFn: (payload) => apiClient.post(`/motos/${moto.id}/transferer/`, payload),
@@ -89,10 +89,10 @@ export default function MotosPage() {
   const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v))
   const { data: motosPage, isLoading } = useResourceListPaged('motos', { ...params, page, page_size: 10 })
   const motos = motosPage?.results
-  const { data: typesMoto } = useResourceList('types-moto', { page_size: 1000 })
-  const { data: couleurs } = useResourceList('couleurs', { page_size: 1000 })
-  const { data: arrivages } = useResourceList('arrivages', { page_size: 1000 })
-  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
+  const { data: typesMoto } = useResourceListAll('types-moto')
+  const { data: couleurs } = useResourceListAll('couleurs')
+  const { data: arrivages } = useResourceListAll('arrivages')
+  const { data: agences } = useResourceListAll('agences', {}, { enabled: user?.role === 'admin' })
   const { create } = useResourceMutations('motos')
 
   const [showCreate, setShowCreate] = useState(false)

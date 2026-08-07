@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../api/client'
-import { useResourceList, useResourceMutations } from '../../hooks/useResource'
+import { useResourceListAll, useResourceListPaged, useResourceMutations } from '../../hooks/useResource'
 import { useAuthStore } from '../../store/authStore'
 import DataTable from '../../components/DataTable'
+import Pagination from '../../components/Pagination'
 import { formatDateTime } from '../../lib/format'
 import { ouvrirPdf } from '../../lib/pdf'
 
@@ -58,10 +59,12 @@ function EnvoiDepotPanel({ envoi, onClose }) {
 
 export default function DepotsPage() {
   const user = useAuthStore((state) => state.user)
-  const { data: envois, isLoading } = useResourceList('envois-depot', { page_size: 1000 })
-  const { data: clients } = useResourceList('clients', { page_size: 1000 })
-  const { data: motos } = useResourceList('motos', { page_size: 1000 })
-  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
+  const [page, setPage] = useState(1)
+  const { data: envoisPage, isLoading } = useResourceListPaged('envois-depot', { page })
+  const envois = envoisPage?.results
+  const { data: clients } = useResourceListAll('clients')
+  const { data: motos } = useResourceListAll('motos')
+  const { data: agences } = useResourceListAll('agences', {}, { enabled: user?.role === 'admin' })
   const { create } = useResourceMutations('envois-depot')
 
   const [showCreate, setShowCreate] = useState(false)
@@ -204,6 +207,7 @@ export default function DepotsPage() {
           },
         ]}
       />
+      <Pagination page={page} onPageChange={setPage} count={envoisPage?.count ?? 0} />
 
       {selected && <EnvoiDepotPanel envoi={selected} onClose={() => setSelectedId(null)} />}
     </div>

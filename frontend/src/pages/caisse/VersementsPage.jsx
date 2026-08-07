@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../api/client'
-import { useResourceList } from '../../hooks/useResource'
+import { useResourceListPaged } from '../../hooks/useResource'
 import { useAuthStore } from '../../store/authStore'
 import DataTable from '../../components/DataTable'
 import Modal from '../../components/Modal'
+import Pagination from '../../components/Pagination'
 import { formatDateTime, formatMontant } from '../../lib/format'
 import { ouvrirPdf } from '../../lib/pdf'
 
@@ -44,7 +45,9 @@ export default function VersementsPage() {
   const user = useAuthStore((state) => state.user)
   const canAnnuler = user?.role === 'admin' || user?.role === 'gerant'
   const queryClient = useQueryClient()
-  const { data: versements, isLoading } = useResourceList('versements')
+  const [page, setPage] = useState(1)
+  const { data: versementsPage, isLoading } = useResourceListPaged('versements', { page })
+  const versements = versementsPage?.results
   const [annulerTarget, setAnnulerTarget] = useState(null)
 
   return (
@@ -87,6 +90,7 @@ export default function VersementsPage() {
           </>
         )}
       />
+      <Pagination page={page} onPageChange={setPage} count={versementsPage?.count ?? 0} />
 
       {annulerTarget && (
         <AnnulerVersementModal

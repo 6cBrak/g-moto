@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { useResourceList, useResourceMutations } from '../../hooks/useResource'
+import { useResourceListAll, useResourceListPaged, useResourceMutations } from '../../hooks/useResource'
 import { useAuthStore } from '../../store/authStore'
 import DataTable from '../../components/DataTable'
 import FilterBar from '../../components/FilterBar'
 import FormModal from '../../components/FormModal'
+import Pagination from '../../components/Pagination'
 import { formatDateTime, formatMontant } from '../../lib/format'
 
 const MOTIFS = [
@@ -14,11 +15,13 @@ const MOTIFS = [
 
 export default function SortiesCaissePage() {
   const user = useAuthStore((state) => state.user)
-  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
-  const { data: fournisseurs } = useResourceList('fournisseurs', { page_size: 1000 })
+  const { data: agences } = useResourceListAll('agences', {}, { enabled: user?.role === 'admin' })
+  const { data: fournisseurs } = useResourceListAll('fournisseurs')
   const [filtres, setFiltres] = useState({})
-  const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v))
-  const { data: sorties, isLoading } = useResourceList('sorties-caisse', params)
+  const [page, setPage] = useState(1)
+  const params = { ...Object.fromEntries(Object.entries(filtres).filter(([, v]) => v)), page }
+  const { data: sortiesPage, isLoading } = useResourceListPaged('sorties-caisse', params)
+  const sorties = sortiesPage?.results
   const { create } = useResourceMutations('sorties-caisse')
   const [showCreate, setShowCreate] = useState(false)
 
@@ -71,7 +74,7 @@ export default function SortiesCaissePage() {
       <FilterBar
         filters={filterFields}
         values={filtres}
-        onChange={(name, value) => setFiltres((prev) => ({ ...prev, [name]: value }))}
+        onChange={(name, value) => { setFiltres((prev) => ({ ...prev, [name]: value })); setPage(1) }}
       />
 
       <DataTable
@@ -88,6 +91,7 @@ export default function SortiesCaissePage() {
           { key: 'cree_par_username', label: 'Cree par' },
         ]}
       />
+      <Pagination page={page} onPageChange={setPage} count={sortiesPage?.count ?? 0} />
 
       {showCreate && (
         <FormModal

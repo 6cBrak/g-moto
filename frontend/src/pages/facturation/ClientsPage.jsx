@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { apiClient } from '../../api/client'
-import { useResourceList, useResourceMutations } from '../../hooks/useResource'
+import { useResourceListAll, useResourceListPaged, useResourceMutations } from '../../hooks/useResource'
 import { useAuthStore } from '../../store/authStore'
 import DataTable from '../../components/DataTable'
 import FilterBar from '../../components/FilterBar'
 import FormModal from '../../components/FormModal'
 import Modal from '../../components/Modal'
+import Pagination from '../../components/Pagination'
 import { formatMontant } from '../../lib/format'
 
 const SEGMENTS = [
@@ -62,7 +63,7 @@ function HistoriqueClientModal({ client, onClose }) {
 
 function ClientsDebiteursPanel() {
   const user = useAuthStore((state) => state.user)
-  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
+  const { data: agences } = useResourceListAll('agences', {}, { enabled: user?.role === 'admin' })
   const [filtres, setFiltres] = useState({})
   const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v))
 
@@ -132,13 +133,15 @@ function RelancesPanel() {
 
 export default function ClientsPage() {
   const [segment, setSegment] = useState('')
-  const { data: clients, isLoading } = useResourceList('clients', { ...(segment ? { segment } : {}), page_size: 1000 })
+  const [page, setPage] = useState(1)
+  const { data: clientsPage, isLoading } = useResourceListPaged('clients', { ...(segment ? { segment } : {}), page })
+  const clients = clientsPage?.results
   const { create, update } = useResourceMutations('clients')
   const [modalMode, setModalMode] = useState(null)
   const [editing, setEditing] = useState(null)
   const [historiqueTarget, setHistoriqueTarget] = useState(null)
   const user = useAuthStore((state) => state.user)
-  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
+  const { data: agences } = useResourceListAll('agences', {}, { enabled: user?.role === 'admin' })
 
   const clientFields = [
     { name: 'nom', label: 'Nom', required: true },
@@ -168,7 +171,11 @@ export default function ClientsPage() {
       <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
         <h1 className="text-xl font-semibold text-slate-800">Clients</h1>
         <div className="flex flex-wrap items-center gap-3">
-          <select value={segment} onChange={(e) => setSegment(e.target.value)} className="border border-slate-300 rounded px-2 py-1 text-sm">
+          <select
+            value={segment}
+            onChange={(e) => { setSegment(e.target.value); setPage(1) }}
+            className="border border-slate-300 rounded px-2 py-1 text-sm"
+          >
             <option value="">Tous les segments</option>
             {SEGMENTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
@@ -201,6 +208,7 @@ export default function ClientsPage() {
           </>
         )}
       />
+      <Pagination page={page} onPageChange={setPage} count={clientsPage?.count ?? 0} />
 
       {modalMode && (
         <FormModal

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '../../api/client'
-import { useResourceList } from '../../hooks/useResource'
+import { useResourceListAll } from '../../hooks/useResource'
 import { useAuthStore } from '../../store/authStore'
 import { useUiStore } from '../../store/uiStore'
 import DataTable from '../../components/DataTable'
@@ -11,7 +11,7 @@ import { formatMontant } from '../../lib/format'
 export default function JournalCaissePage() {
   const user = useAuthStore((state) => state.user)
   const agenceFiltre = useUiStore((state) => state.agenceFiltre)
-  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' && !agenceFiltre })
+  const { data: agences } = useResourceListAll('agences', {}, { enabled: user?.role === 'admin' && !agenceFiltre })
   const [filtres, setFiltres] = useState({})
 
   const { data, isLoading } = useQuery({

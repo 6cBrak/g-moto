@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../../api/client'
-import { useResourceList, useResourceMutations } from '../../hooks/useResource'
+import { useResourceListAll, useResourceListPaged, useResourceMutations } from '../../hooks/useResource'
 import { useAuthStore } from '../../store/authStore'
 import DataTable from '../../components/DataTable'
 import FilterBar from '../../components/FilterBar'
 import FormModal from '../../components/FormModal'
+import Pagination from '../../components/Pagination'
 import { formatDate } from '../../lib/format'
 
 const TYPES = [
@@ -23,10 +24,12 @@ const STATUT_OPTIONS = [
 export default function EntretiensPage() {
   const user = useAuthStore((state) => state.user)
   const [filtres, setFiltres] = useState({})
-  const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v))
-  const { data: entretiens, isLoading } = useResourceList('entretiens', params)
-  const { data: motos } = useResourceList('motos', { page_size: 1000 })
-  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
+  const [page, setPage] = useState(1)
+  const params = { ...Object.fromEntries(Object.entries(filtres).filter(([, v]) => v)), page }
+  const { data: entretiensPage, isLoading } = useResourceListPaged('entretiens', params)
+  const entretiens = entretiensPage?.results
+  const { data: motos } = useResourceListAll('motos')
+  const { data: agences } = useResourceListAll('agences', {}, { enabled: user?.role === 'admin' })
   const { create } = useResourceMutations('entretiens')
   const queryClient = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
@@ -61,7 +64,7 @@ export default function EntretiensPage() {
       <FilterBar
         filters={filterFields}
         values={filtres}
-        onChange={(name, value) => setFiltres((prev) => ({ ...prev, [name]: value }))}
+        onChange={(name, value) => { setFiltres((prev) => ({ ...prev, [name]: value })); setPage(1) }}
       />
 
       <DataTable
@@ -80,6 +83,7 @@ export default function EntretiensPage() {
           </button>
         )}
       />
+      <Pagination page={page} onPageChange={setPage} count={entretiensPage?.count ?? 0} />
 
       {showCreate && (
         <FormModal

@@ -1,5 +1,5 @@
 import CrudPage from '../../components/CrudPage'
-import { useResourceList } from '../../hooks/useResource'
+import { useResourceListAll } from '../../hooks/useResource'
 
 const ROLES = [
   { value: 'vendeur_caissier', label: 'Vendeur / Caissier' },
@@ -8,7 +8,7 @@ const ROLES = [
 ]
 
 export default function UtilisateursPage() {
-  const { data: agences } = useResourceList('agences', { page_size: 1000 })
+  const { data: agences } = useResourceListAll('agences')
 
   return (
     <CrudPage

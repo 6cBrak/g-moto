@@ -29,6 +29,32 @@ export function useResourceListPaged(resource, params = {}, options = {}) {
   })
 }
 
+// Pour peupler un menu deroulant : recupere TOUTES les pages, quel que soit
+// le nombre total d'elements. A utiliser a la place de useResourceList des
+// qu'on a besoin de l'integralite d'une liste de reference (types de moto,
+// clients, motos...), plutot qu'un page_size fixe qui finirait par etre
+// depasse un jour et referait disparaitre silencieusement des options.
+export function useResourceListAll(resource, params = {}, options = {}) {
+  return useQuery({
+    queryKey: [resource, 'list-all', params],
+    queryFn: async () => {
+      let resultats = []
+      let page = 1
+      for (;;) {
+        const { data } = await apiClient.get(`/${resource}/`, { params: { ...params, page, page_size: 500 } })
+        if (!data || !Array.isArray(data.results)) {
+          return Array.isArray(data) ? data : []
+        }
+        resultats = resultats.concat(data.results)
+        if (!data.next) break
+        page += 1
+      }
+      return resultats
+    },
+    ...options,
+  })
+}
+
 export function useResourceMutations(resource) {
   const queryClient = useQueryClient()
   const invalidate = () => queryClient.invalidateQueries({ queryKey: [resource] })

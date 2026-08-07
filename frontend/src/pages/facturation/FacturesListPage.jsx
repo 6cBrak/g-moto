@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useResourceList } from '../../hooks/useResource'
+import { useResourceListAll, useResourceListPaged } from '../../hooks/useResource'
 import { useAuthStore } from '../../store/authStore'
 import DataTable from '../../components/DataTable'
 import FilterBar from '../../components/FilterBar'
+import Pagination from '../../components/Pagination'
 import { formatDateTime, formatMontant } from '../../lib/format'
 
 const STATUTS = [
@@ -13,11 +14,13 @@ const STATUTS = [
 
 export default function FacturesListPage() {
   const user = useAuthStore((state) => state.user)
-  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
+  const { data: agences } = useResourceListAll('agences', {}, { enabled: user?.role === 'admin' })
   const [filtres, setFiltres] = useState({})
+  const [page, setPage] = useState(1)
 
-  const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v))
-  const { data: factures, isLoading } = useResourceList('factures', params)
+  const params = { ...Object.fromEntries(Object.entries(filtres).filter(([, v]) => v)), page }
+  const { data: facturesPage, isLoading } = useResourceListPaged('factures', params)
+  const factures = facturesPage?.results
 
   const filterFields = [
     { name: 'q', label: 'Recherche', placeholder: 'N° facture ou client' },
@@ -44,7 +47,7 @@ export default function FacturesListPage() {
       <FilterBar
         filters={filterFields}
         values={filtres}
-        onChange={(name, value) => setFiltres((prev) => ({ ...prev, [name]: value }))}
+        onChange={(name, value) => { setFiltres((prev) => ({ ...prev, [name]: value })); setPage(1) }}
       />
 
       <DataTable
@@ -64,6 +67,7 @@ export default function FacturesListPage() {
           </Link>
         )}
       />
+      <Pagination page={page} onPageChange={setPage} count={facturesPage?.count ?? 0} />
     </div>
   )
 }

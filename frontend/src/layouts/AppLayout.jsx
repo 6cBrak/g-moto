@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useUiStore } from '../store/uiStore'
-import { useResourceList } from '../hooks/useResource'
+import { useResourceListAll } from '../hooks/useResource'
 
 const ROLES_TOUS = ['admin', 'gerant', 'vendeur_caissier']
 const ROLES_GESTION = ['admin', 'gerant']
@@ -72,7 +72,7 @@ export default function AppLayout() {
   const logout = useAuthStore((state) => state.logout)
   const agenceFiltre = useUiStore((state) => state.agenceFiltre)
   const setAgenceFiltre = useUiStore((state) => state.setAgenceFiltre)
-  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
+  const { data: agences } = useResourceListAll('agences', {}, { enabled: user?.role === 'admin' })
   const location = useLocation()
 
   const [openGroups, setOpenGroups] = useState(() => {

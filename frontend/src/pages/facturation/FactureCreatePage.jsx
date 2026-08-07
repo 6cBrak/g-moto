@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useResourceList, useResourceMutations } from '../../hooks/useResource'
+import { useResourceListAll, useResourceMutations } from '../../hooks/useResource'
 import { useAuthStore } from '../../store/authStore'
 
 function ligneVide() {
@@ -20,11 +20,11 @@ export default function FactureCreatePage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
-  const { data: clients } = useResourceList('clients', { page_size: 1000 })
-  const { data: motos } = useResourceList('motos', { page_size: 1000 })
-  const { data: typesMoto } = useResourceList('types-moto', { page_size: 1000 })
-  const { data: casques } = useResourceList('modeles-casque', { page_size: 1000 })
-  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
+  const { data: clients } = useResourceListAll('clients')
+  const { data: motos } = useResourceListAll('motos')
+  const { data: typesMoto } = useResourceListAll('types-moto')
+  const { data: casques } = useResourceListAll('modeles-casque')
+  const { data: agences } = useResourceListAll('agences', {}, { enabled: user?.role === 'admin' })
   const { create } = useResourceMutations('factures')
 
   const [clientId, setClientId] = useState(searchParams.get('client') ?? '')

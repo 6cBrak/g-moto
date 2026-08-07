@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import CrudPage from '../../components/CrudPage'
 import FilterBar from '../../components/FilterBar'
-import { useResourceList } from '../../hooks/useResource'
+import { useResourceListAll } from '../../hooks/useResource'
 import { useAuthStore } from '../../store/authStore'
 import { formatDate } from '../../lib/format'
 
 export default function GarantiesPage() {
   const user = useAuthStore((state) => state.user)
-  const { data: motos } = useResourceList('motos', { page_size: 1000 })
-  const { data: agences } = useResourceList('agences', { page_size: 1000 }, { enabled: user?.role === 'admin' })
+  const { data: motos } = useResourceListAll('motos')
+  const { data: agences } = useResourceListAll('agences', {}, { enabled: user?.role === 'admin' })
   const [filtres, setFiltres] = useState({})
   const params = Object.fromEntries(Object.entries(filtres).filter(([, v]) => v))
 
