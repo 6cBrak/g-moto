@@ -24,6 +24,7 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
   const motos = motosPage?.results
   const { data: typesMoto } = useResourceListAll('types-moto')
   const { data: couleurs } = useResourceListAll('couleurs')
+  const { data: arrivagesAgence } = useResourceListAll('arrivages', { agence: arrivage.agence })
   const { create, update, remove } = useResourceMutations('motos')
 
   const [form, setForm] = useState({ numero_serie: '', type_moto: '', couleur: '', prix_achat: '', immatriculation: '' })
@@ -203,6 +204,13 @@ function ArrivageMotosPanel({ arrivage, onClose }) {
               type: 'select',
               required: true,
               options: (couleurs ?? []).map((c) => ({ value: c.id, label: c.nom })),
+            },
+            {
+              name: 'arrivage',
+              label: 'Arrivage',
+              type: 'select',
+              required: true,
+              options: (arrivagesAgence ?? []).map((a) => ({ value: a.id, label: a.numero_bon })),
             },
             { name: 'prix_achat', label: 'Prix achat', type: 'number', step: '0.01' },
             { name: 'immatriculation', label: 'Immatriculation' },
