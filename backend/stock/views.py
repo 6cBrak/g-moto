@@ -13,13 +13,14 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
-from core.models import Utilisateur
+from core.models import Agence, Utilisateur
 from core.pdf_utils import dessiner_entete
 from core.permissions import IsAdminOrGerant
 from core.utils import appliquer_periode, resolve_agence_filter
 from core.viewsets import AgenceScopedViewSet
 
 from .models import Arrivage, HistoriqueMoto, Moto
+from .pdf import generer_pdf_liste_motos
 from .serializers import (
     ArrivageSerializer,
     HistoriqueMotoSerializer,
@@ -131,6 +132,40 @@ class MotoViewSet(AgenceScopedViewSet):
                 {'detail': "Cette moto est liee a d'autres enregistrements (depot, historique) et ne peut pas etre supprimee."},
                 status=400,
             )
+
+    @action(detail=False, methods=['get'], url_path='pdf')
+    def pdf(self, request):
+        """Liste imprimable des motos, avec les memes filtres que la liste a l'ecran."""
+        params = request.query_params
+        motos = self.get_queryset().order_by(
+            'type_moto__marque__nom', 'type_moto__nom', 'couleur__nom', 'numero_serie',
+        )
+
+        agence = request.user.agence
+        criteres = []
+        if request.user.role == Utilisateur.Role.ADMIN:
+            agence = Agence.objects.filter(pk=params['agence']).first() if params.get('agence') else None
+            criteres.append(f"Agence : {agence.nom if agence else 'Toutes les agences'}")
+
+        statut = params.get('statut')
+        criteres.append(
+            f"Statut : {Moto.Statut(statut).label if statut in Moto.Statut.values else 'Tous'}",
+        )
+        if params.get('arrivage'):
+            arrivage = Arrivage.objects.filter(pk=params['arrivage']).first()
+            if arrivage:
+                criteres.append(f"Arrivage : {arrivage.numero_bon}")
+        if params.get('q'):
+            criteres.append(f"Recherche : {params['q']}")
+        if params.get('date_debut') or params.get('date_fin'):
+            criteres.append(
+                f"Période d'entrée : du {params.get('date_debut') or '...'} au {params.get('date_fin') or '...'}",
+            )
+
+        return FileResponse(
+            generer_pdf_liste_motos(motos, agence, [' - '.join(criteres)], request.user),
+            as_attachment=False, filename='liste-motos.pdf',
+        )
 
     @action(detail=True, methods=['get'])
     def historique(self, request, pk=None):

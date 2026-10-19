@@ -9,6 +9,7 @@ import FormModal from '../../components/FormModal'
 import Modal from '../../components/Modal'
 import Pagination from '../../components/Pagination'
 import { formatDateTime, formatMontant } from '../../lib/format'
+import { ouvrirPdf } from '../../lib/pdf'
 
 const STATUTS = {
   en_stock: 'En stock',
@@ -160,9 +161,17 @@ export default function MotosPage() {
     <div>
       <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
         <h1 className="text-xl font-semibold text-slate-800">Motos</h1>
-        <button onClick={() => setShowCreate(true)} className="px-4 py-2 text-sm bg-slate-800 text-white rounded">
-          + Nouvelle moto
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => ouvrirPdf('/motos/pdf/', params)}
+            className="px-4 py-2 text-sm border border-slate-300 text-slate-700 rounded hover:bg-slate-50"
+          >
+            Imprimer la liste
+          </button>
+          <button onClick={() => setShowCreate(true)} className="px-4 py-2 text-sm bg-slate-800 text-white rounded">
+            + Nouvelle moto
+          </button>
+        </div>
       </div>
 
       <FilterBar

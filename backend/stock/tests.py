@@ -245,3 +245,63 @@ class StockVueEnsembleTests(StockTestBase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['quantite_stock'], 2)
+
+
+class ListeMotosPdfTests(StockTestBase):
+    def _texte(self, user, **params):
+        from core.tests_helpers import extraire_texte_pdf
+        self.client.force_authenticate(user=user)
+        response = self.client.get(reverse('moto-pdf'), params)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        return extraire_texte_pdf(response)
+
+    def test_vendeur_ne_voit_que_les_motos_de_son_agence(self):
+        texte = self._texte(self.vendeur_a)
+        self.assertIn('SN-A-0001', texte)
+        self.assertNotIn('SN-B-0001', texte)
+        self.assertIn('Total : 1 moto', texte)
+
+    def test_admin_voit_toutes_les_agences_avec_colonne_agence(self):
+        texte = self._texte(self.admin)
+        self.assertIn('SN-A-0001', texte)
+        self.assertIn('SN-B-0001', texte)
+        self.assertIn('Toutes les agences', texte)
+        self.assertIn('(AGENCE)', texte)
+        self.assertIn('Total : 2 motos', texte)
+
+    def test_admin_filtre_par_agence(self):
+        texte = self._texte(self.admin, agence=self.agence_b.id)
+        self.assertNotIn('SN-A-0001', texte)
+        self.assertIn('SN-B-0001', texte)
+
+    def test_filtre_statut_et_criteres_affiches(self):
+        Moto.objects.create(
+            numero_serie='SN-A-VENDUE', type_moto=self.type_moto, couleur=self.couleur,
+            arrivage=self.arrivage_a, agence=self.agence_a, statut=Moto.Statut.VENDUE,
+        )
+        texte = self._texte(self.vendeur_a, statut='en_stock')
+        self.assertIn('SN-A-0001', texte)
+        self.assertNotIn('SN-A-VENDUE', texte)
+        self.assertIn('Statut : En stock', texte)
+
+    def test_recherche_et_arrivage(self):
+        texte = self._texte(self.vendeur_a, q='0001', arrivage=self.arrivage_a.id)
+        self.assertIn('Arrivage : BON-A-001', texte)
+        self.assertIn('Recherche : 0001', texte)
+
+    def test_liste_longue_sur_plusieurs_pages_avec_recapitulatif(self):
+        for i in range(90):
+            Moto.objects.create(
+                numero_serie=f'SN-LONG-{i:03d}', type_moto=self.type_moto, couleur=self.couleur,
+                arrivage=self.arrivage_a, agence=self.agence_a,
+            )
+        texte = self._texte(self.vendeur_a)
+        self.assertIn('SN-LONG-089', texte)
+        self.assertIn('Page 2', texte)
+        self.assertIn('Total : 91 motos', texte)
+
+    def test_liste_vide(self):
+        texte = self._texte(self.vendeur_a, q='introuvable')
+        self.assertIn('Total : 0 moto', texte)
+        self.assertIn('Aucune moto', texte)
