@@ -18,6 +18,9 @@ PAS_LIGNE = 8 * mm
 COL_GAUCHE = MARGE + 4 * mm
 COL_DROITE = MARGE + 90 * mm
 FIN_CADRE = A4[0] - MARGE - 4 * mm
+X_NUMERO = MARGE + 8 * mm
+X_FILET_NUMERO = MARGE + 13 * mm
+COL_LIGNE = MARGE + 16 * mm
 
 POLICE_LABEL = ('Helvetica-Bold', 9.5)
 POLICE_VALEUR = ('Helvetica', 10.5)
@@ -52,14 +55,16 @@ class _FacturePdf:
         self.doc.showPage()
         self.y = self.hauteur - MARGE
 
-    def _assurer_place(self, hauteur, dans_cadre=False):
-        if self.y - hauteur >= MARGE:
-            return
+    def _assurer_place(self, hauteur, dans_cadre=False, marge_bas=MARGE):
+        """Passe a une nouvelle page s'il manque de la place. Retourne True si c'est le cas."""
+        if self.y - hauteur >= marge_bas:
+            return False
         if dans_cadre:
             self._fermer_cadre()
         self._nouvelle_page()
         if dans_cadre:
             self._ouvrir_cadre()
+        return True
 
     # --- sections ---
 
@@ -111,29 +116,44 @@ class _FacturePdf:
         self.doc.line(COL_GAUCHE, self.y + 5.5 * mm, FIN_CADRE, self.y + 5.5 * mm)
         self.doc.setStrokeGray(0)
 
+    def _separateur_totaux(self):
+        self.y -= 5 * mm
+        self.doc.setLineWidth(1)
+        self.doc.line(MARGE, self.y + 8 * mm, A4[0] - MARGE, self.y + 8 * mm)
+
+    def _numeroter(self, numero, haut, bas):
+        """Numero d'ordre dans la marge gauche du bloc, separe des champs par un filet."""
+        doc = self.doc
+        doc.setLineWidth(0.5)
+        doc.setStrokeGray(0.45)
+        doc.line(X_FILET_NUMERO, haut, X_FILET_NUMERO, bas)
+        doc.setStrokeGray(0)
+        doc.setFont('Helvetica-Bold', 15)
+        doc.drawCentredString(X_NUMERO, (haut + bas) / 2 - 2 * mm, str(numero))
+
     def _ligne_moto(self, ligne):
         moto = ligne.moto
-        self._champ('MOTO :', str(moto.type_moto), COL_GAUCHE, self.y, COL_DROITE - 4 * mm)
+        self._champ('MOTO :', str(moto.type_moto), COL_LIGNE, self.y, COL_DROITE - 4 * mm)
         self._champ('COULEUR :', moto.couleur.nom, COL_DROITE, self.y, FIN_CADRE)
         self.y -= PAS_LIGNE
-        self._champ('MARQUE :', moto.type_moto.marque.nom, COL_GAUCHE, self.y, COL_DROITE - 4 * mm)
+        self._champ('MARQUE :', moto.type_moto.marque.nom, COL_LIGNE, self.y, COL_DROITE - 4 * mm)
         self._champ('TYPE :', moto.type_moto.nom, COL_DROITE, self.y, FIN_CADRE)
         self.y -= PAS_LIGNE
-        self._champ('CHÂSSIS N° :', moto.numero_serie, COL_GAUCHE, self.y, FIN_CADRE)
+        self._champ('CHÂSSIS N° :', moto.numero_serie, COL_LIGNE, self.y, FIN_CADRE)
         self.y -= PAS_LIGNE
-        self._champ('MONTANT :', formater_montant(ligne.montant), COL_GAUCHE, self.y, FIN_CADRE)
+        self._champ('MONTANT :', formater_montant(ligne.montant), COL_LIGNE, self.y, FIN_CADRE)
         self.y -= PAS_LIGNE
 
     def _ligne_article(self, ligne):
         designation = ligne.designation
         if ligne.modele_casque:
             designation = f"Casque {ligne.modele_casque.nom}"
-        self._champ('ARTICLE :', designation, COL_GAUCHE, self.y, FIN_CADRE)
+        self._champ('ARTICLE :', designation, COL_LIGNE, self.y, FIN_CADRE)
         self.y -= PAS_LIGNE
-        self._champ('QUANTITÉ :', ligne.quantite, COL_GAUCHE, self.y, COL_DROITE - 4 * mm)
+        self._champ('QUANTITÉ :', ligne.quantite, COL_LIGNE, self.y, COL_DROITE - 4 * mm)
         self._champ('PRIX UNITAIRE :', formater_montant(ligne.prix_unitaire), COL_DROITE, self.y, FIN_CADRE)
         self.y -= PAS_LIGNE
-        self._champ('MONTANT :', formater_montant(ligne.montant), COL_GAUCHE, self.y, FIN_CADRE)
+        self._champ('MONTANT :', formater_montant(ligne.montant), COL_LIGNE, self.y, FIN_CADRE)
         self.y -= PAS_LIGNE
 
     def _cadre_lignes(self):
@@ -147,17 +167,19 @@ class _FacturePdf:
 
         self._ouvrir_cadre()
         for index, ligne in enumerate(lignes):
-            self._assurer_place(4 * PAS_LIGNE + 3 * mm, dans_cadre=True)
-            if index:
+            nouvelle_page = self._assurer_place(4 * PAS_LIGNE + 3 * mm, dans_cadre=True)
+            if index and not nouvelle_page:
                 self._separateur()
+            haut = self.y + 5 * mm
             if ligne.moto:
                 self._ligne_moto(ligne)
             else:
                 self._ligne_article(ligne)
+            self._numeroter(index + 1, haut, self.y + PAS_LIGNE - 3 * mm)
 
-        self._assurer_place(3 * PAS_LIGNE, dans_cadre=True)
+        self._assurer_place(3 * PAS_LIGNE + 5 * mm, dans_cadre=True)
+        self._separateur_totaux()
         if len(lignes) > 1:
-            self._separateur()
             self._champ('MONTANT TOTAL :', formater_montant(total), COL_GAUCHE, self.y, FIN_CADRE)
             self.y -= PAS_LIGNE
         self._champ('AVANCE VERSÉE :', formater_montant(avance), COL_GAUCHE, self.y, FIN_CADRE)
@@ -168,7 +190,7 @@ class _FacturePdf:
 
     def _pied(self):
         doc, facture = self.doc, self.facture
-        self._assurer_place(75 * mm)
+        self._assurer_place(58 * mm, marge_bas=12 * mm)
         nom_agence = facture.agence.nom_commercial or facture.agence.nom
 
         self.y -= 6 * mm
