@@ -358,6 +358,7 @@ export default function FactureDetailPage() {
           rows={versements}
           emptyMessage="Aucun versement enregistre."
           columns={[
+            { key: 'numero_recu', label: 'N° recu', render: (r) => r.numero_recu || '-' },
             { key: 'date_versement', label: 'Date', render: (r) => formatDateTime(r.date_versement) },
             { key: 'montant', label: 'Montant', render: (r) => `${formatMontant(r.montant)} F` },
             { key: 'mode_paiement', label: 'Mode' },

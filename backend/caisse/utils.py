@@ -5,6 +5,19 @@ from django.db.models import Sum
 from rest_framework.exceptions import ValidationError
 
 
+def generer_numero_recu(agence):
+    from .models import Versement
+
+    prefixe = f"R{agence.id:02d}-{date.today().year}-"
+    dernier = (
+        Versement.objects.filter(numero_recu__startswith=prefixe)
+        .order_by('-numero_recu')
+        .first()
+    )
+    sequence = int(dernier.numero_recu.rsplit('-', 1)[-1]) + 1 if dernier else 1
+    return f"{prefixe}{sequence:05d}"
+
+
 def verifier_caisse_ouverte(agence):
     from .models import SessionCaisse
 

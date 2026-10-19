@@ -1,6 +1,5 @@
 from datetime import date
 from decimal import Decimal, InvalidOperation
-from io import BytesIO
 
 from django.db.models import Sum
 from django.http import FileResponse
@@ -12,12 +11,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
-from reportlab.pdfgen import canvas
 
 from core.models import Agence, Utilisateur
-from core.pdf_utils import dessiner_entete
 from core.permissions import IsAdminOrGerant
 from core.utils import (
     appliquer_periode, calculer_clients_debiteurs, calculer_fournisseurs_dus, resolve_agence_filter,
@@ -30,7 +25,8 @@ from stock.serializers import HistoriqueMotoSerializer, MotoSerializer
 
 from .models import SessionCaisse, SortieCaisse, Versement
 from .serializers import SessionCaisseSerializer, SortieCaisseSerializer, VersementSerializer
-from .utils import verifier_caisse_ouverte, verifier_solde_suffisant
+from .pdf import generer_pdf_recu
+from .utils import generer_numero_recu, verifier_caisse_ouverte, verifier_solde_suffisant
 
 
 class VersementViewSet(AgenceScopedViewSet):
@@ -47,7 +43,10 @@ class VersementViewSet(AgenceScopedViewSet):
     def perform_create(self, serializer):
         facture = serializer.validated_data['facture']
         verifier_caisse_ouverte(facture.agence)
-        serializer.save(agence=facture.agence, cree_par=self.request.user)
+        serializer.save(
+            agence=facture.agence, cree_par=self.request.user,
+            numero_recu=generer_numero_recu(facture.agence),
+        )
 
     def get_permissions(self):
         if self.action == 'annuler':
@@ -81,40 +80,9 @@ class VersementViewSet(AgenceScopedViewSet):
     @action(detail=True, methods=['get'], url_path='recu')
     def recu(self, request, pk=None):
         versement = self.get_object()
-        buffer = BytesIO()
-        doc = canvas.Canvas(buffer, pagesize=A4)
-        width, height = A4
-
-        y = dessiner_entete(doc, versement.agence, height - 25 * mm, width)
-        doc.setFont('Helvetica-Bold', 16)
-        doc.drawString(20 * mm, y, "Recu de versement")
-        y -= 12 * mm
-
-        doc.setFont('Helvetica', 11)
-        for ligne in [
-            f"Facture : {versement.facture.numero_facture}",
-            f"Client : {versement.facture.client.nom}",
-            f"Date : {versement.date_versement.strftime('%d/%m/%Y %H:%M')}",
-            f"Mode de paiement : {versement.get_mode_paiement_display()}",
-            f"Reference : {versement.reference_transaction or '-'}",
-            f"Recu par : {versement.cree_par.username}",
-        ]:
-            doc.drawString(20 * mm, y, ligne)
-            y -= 7 * mm
-
-        y -= 8 * mm
-        doc.setFont('Helvetica-Bold', 14)
-        doc.drawString(20 * mm, y, f"Montant verse : {versement.montant:,.0f} F")
-
-        y -= 20 * mm
-        doc.setFont('Helvetica', 10)
-        doc.drawString(20 * mm, y, 'Signature : ______________________')
-
-        doc.showPage()
-        doc.save()
-        buffer.seek(0)
         return FileResponse(
-            buffer, as_attachment=False, filename=f"recu-versement-{versement.id}.pdf",
+            generer_pdf_recu(versement), as_attachment=False,
+            filename=f"recu-{versement.numero_recu or versement.id}.pdf",
         )
 
 

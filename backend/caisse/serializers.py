@@ -18,12 +18,14 @@ class VersementSerializer(FactureAgenceValidationMixin, serializers.ModelSeriali
     class Meta:
         model = Versement
         fields = [
-            'id', 'facture', 'facture_numero', 'client_nom', 'agence', 'agence_nom',
+            'id', 'numero_recu', 'facture', 'facture_numero', 'client_nom', 'agence', 'agence_nom',
             'montant', 'mode_paiement', 'reference_transaction', 'statut',
             'cree_par', 'cree_par_username', 'date_versement',
             'annule_par_username', 'date_annulation',
         ]
-        read_only_fields = ['id', 'agence', 'cree_par', 'date_versement', 'statut', 'date_annulation']
+        read_only_fields = [
+            'id', 'numero_recu', 'agence', 'cree_par', 'date_versement', 'statut', 'date_annulation',
+        ]
 
     def validate(self, attrs):
         facture = attrs.get('facture')

@@ -5,6 +5,7 @@ from rest_framework.test import APITestCase
 
 from catalogue.models import Couleur, Fournisseur, Marque, TypeMoto
 from core.models import Agence, Utilisateur
+from core.tests_helpers import extraire_texte_pdf
 from stock.models import Arrivage, HistoriqueMoto, Moto
 
 from .models import CarteGrise, Client, DepotVente, EnvoiDepot, Facture
@@ -518,20 +519,9 @@ class MontantEnLettresTests(APITestCase):
 
 class FacturePdfContenuTests(FacturationTestBase):
     def _texte_pdf(self, facture_id):
-        import re
-        import zlib
         response = self.client.get(reverse('facture-pdf', args=[facture_id]))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        contenu = b''.join(response.streaming_content)
-        # reportlab compresse les flux en ASCII85+Flate
-        from base64 import a85decode
-        texte = ''
-        for flux in re.findall(rb'stream\r?\n(.*?)endstream', contenu, re.S):
-            try:
-                texte += zlib.decompress(a85decode(flux.strip(), adobe=True)).decode('latin-1')
-            except Exception:
-                continue
-        return texte
+        return extraire_texte_pdf(response)
 
     def test_pdf_contient_arrivage_adresse_et_montants(self):
         from caisse.models import Versement

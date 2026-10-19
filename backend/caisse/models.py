@@ -18,6 +18,7 @@ class Versement(models.Model):
         VALIDE = 'valide', 'Valide'
         ANNULE = 'annule', 'Annule'
 
+    numero_recu = models.CharField(max_length=30, unique=True, null=True, blank=True)
     facture = models.ForeignKey(Facture, on_delete=models.PROTECT, related_name='versements')
     agence = models.ForeignKey(Agence, on_delete=models.PROTECT, related_name='versements')
     montant = models.DecimalField(max_digits=12, decimal_places=2)

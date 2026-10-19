@@ -60,6 +60,7 @@ export default function VersementsPage() {
         isLoading={isLoading}
         rows={versements}
         columns={[
+          { key: 'numero_recu', label: 'N° recu', render: (r) => r.numero_recu || '-' },
           { key: 'date_versement', label: 'Date', render: (r) => formatDateTime(r.date_versement) },
           { key: 'facture_numero', label: 'Facture' },
           { key: 'client_nom', label: 'Client' },

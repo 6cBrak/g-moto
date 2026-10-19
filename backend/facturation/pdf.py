@@ -8,7 +8,9 @@ from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas
 
 from caisse.models import Versement
-from core.pdf_utils import dessiner_entete, montant_en_lettres
+from core.pdf_utils import (
+    dessiner_champ, dessiner_entete, formater_montant, montant_en_lettres,
+)
 
 MARGE = 20 * mm
 LARGEUR_UTILE = A4[0] - 2 * MARGE
@@ -19,18 +21,6 @@ FIN_CADRE = A4[0] - MARGE - 4 * mm
 
 POLICE_LABEL = ('Helvetica-Bold', 9.5)
 POLICE_VALEUR = ('Helvetica', 10.5)
-
-
-def _argent(valeur):
-    return f"{Decimal(valeur):,.0f}".replace(',', ' ') + ' F'
-
-
-def _tronquer(texte, police, taille, largeur):
-    if stringWidth(texte, police, taille) <= largeur:
-        return texte
-    while texte and stringWidth(texte + '...', police, taille) > largeur:
-        texte = texte[:-1]
-    return texte + '...'
 
 
 class _FacturePdf:
@@ -45,18 +35,7 @@ class _FacturePdf:
     # --- primitives ---
 
     def _champ(self, label, valeur, x, y, x_fin):
-        """Dessine `LABEL : valeur` suivi d'une ligne pointillee jusqu'a x_fin."""
-        doc = self.doc
-        doc.setFont(*POLICE_LABEL)
-        doc.drawString(x, y, label)
-        x_valeur = x + stringWidth(label, *POLICE_LABEL) + 2 * mm
-        if valeur:
-            doc.setFont(*POLICE_VALEUR)
-            doc.drawString(x_valeur, y, _tronquer(str(valeur), *POLICE_VALEUR, x_fin - x_valeur))
-        doc.setLineWidth(0.4)
-        doc.setDash(1, 2)
-        doc.line(x_valeur, y - 1 * mm, x_fin, y - 1 * mm)
-        doc.setDash()
+        dessiner_champ(self.doc, label, valeur, x, y, x_fin, POLICE_LABEL, POLICE_VALEUR)
 
     def _ouvrir_cadre(self):
         self.cadre_haut = self.y
@@ -142,7 +121,7 @@ class _FacturePdf:
         self.y -= PAS_LIGNE
         self._champ('CHÂSSIS N° :', moto.numero_serie, COL_GAUCHE, self.y, FIN_CADRE)
         self.y -= PAS_LIGNE
-        self._champ('MONTANT :', _argent(ligne.montant), COL_GAUCHE, self.y, FIN_CADRE)
+        self._champ('MONTANT :', formater_montant(ligne.montant), COL_GAUCHE, self.y, FIN_CADRE)
         self.y -= PAS_LIGNE
 
     def _ligne_article(self, ligne):
@@ -152,9 +131,9 @@ class _FacturePdf:
         self._champ('ARTICLE :', designation, COL_GAUCHE, self.y, FIN_CADRE)
         self.y -= PAS_LIGNE
         self._champ('QUANTITÉ :', ligne.quantite, COL_GAUCHE, self.y, COL_DROITE - 4 * mm)
-        self._champ('PRIX UNITAIRE :', _argent(ligne.prix_unitaire), COL_DROITE, self.y, FIN_CADRE)
+        self._champ('PRIX UNITAIRE :', formater_montant(ligne.prix_unitaire), COL_DROITE, self.y, FIN_CADRE)
         self.y -= PAS_LIGNE
-        self._champ('MONTANT :', _argent(ligne.montant), COL_GAUCHE, self.y, FIN_CADRE)
+        self._champ('MONTANT :', formater_montant(ligne.montant), COL_GAUCHE, self.y, FIN_CADRE)
         self.y -= PAS_LIGNE
 
     def _cadre_lignes(self):
@@ -179,11 +158,11 @@ class _FacturePdf:
         self._assurer_place(3 * PAS_LIGNE, dans_cadre=True)
         if len(lignes) > 1:
             self._separateur()
-            self._champ('MONTANT TOTAL :', _argent(total), COL_GAUCHE, self.y, FIN_CADRE)
+            self._champ('MONTANT TOTAL :', formater_montant(total), COL_GAUCHE, self.y, FIN_CADRE)
             self.y -= PAS_LIGNE
-        self._champ('AVANCE VERSÉE :', _argent(avance), COL_GAUCHE, self.y, FIN_CADRE)
+        self._champ('AVANCE VERSÉE :', formater_montant(avance), COL_GAUCHE, self.y, FIN_CADRE)
         self.y -= PAS_LIGNE
-        self._champ('RESTE À PAYER :', _argent(total - avance), COL_GAUCHE, self.y, FIN_CADRE)
+        self._champ('RESTE À PAYER :', formater_montant(total - avance), COL_GAUCHE, self.y, FIN_CADRE)
         self.y -= PAS_LIGNE
         self._fermer_cadre()
 

@@ -6,6 +6,7 @@ from catalogue.models import Couleur, Fournisseur, Marque, TypeMoto
 from core.models import Agence, Utilisateur
 from depenses.models import CategorieDepense, Depense
 from facturation.models import Client, Facture
+from core.tests_helpers import extraire_texte_pdf
 from stock.models import Arrivage, Moto
 
 from .models import SessionCaisse, SortieCaisse, Versement
@@ -386,3 +387,100 @@ class SessionCaisseTests(CaisseTestBase):
         response = self.client.get(reverse('caisse-journal'))
         descriptions = [m['description'] for m in response.data]
         self.assertIn('Depot BICICI', descriptions)
+
+
+class NumeroRecuTests(CaisseTestBase):
+    def _verser(self, montant):
+        return self.client.post(reverse('versement-list'), {
+            'facture': self.facture.id, 'montant': montant,
+            'mode_paiement': Versement.ModePaiement.ESPECES,
+        })
+
+    def test_numero_recu_attribue_et_incremente(self):
+        from datetime import date
+        r1, r2 = self._verser('100000'), self._verser('100000')
+        prefixe = f"R{self.agence_a.id:02d}-{date.today().year}-"
+        self.assertEqual(r1.data['numero_recu'], f"{prefixe}00001")
+        self.assertEqual(r2.data['numero_recu'], f"{prefixe}00002")
+
+    def test_numero_recu_non_modifiable_par_le_client(self):
+        response = self.client.post(reverse('versement-list'), {
+            'facture': self.facture.id, 'montant': '100000', 'numero_recu': 'PIRATE',
+            'mode_paiement': Versement.ModePaiement.ESPECES,
+        })
+        self.assertNotEqual(response.data['numero_recu'], 'PIRATE')
+
+    def test_numerotation_des_versements_existants(self):
+        import importlib
+
+        from django.apps import apps
+        migration = importlib.import_module('caisse.migrations.0006_numeroter_versements_existants')
+        anciens = [
+            Versement.objects.create(
+                facture=self.facture, agence=self.agence_a, montant='1000',
+                mode_paiement='especes', cree_par=self.gerant_a,
+            )
+            for _ in range(3)
+        ]
+        migration.numeroter_versements_existants(apps, None)
+        numeros = [Versement.objects.get(id=v.id).numero_recu for v in anciens]
+        self.assertTrue(all(numeros))
+        self.assertEqual(len(set(numeros)), 3)
+        self.assertEqual(numeros, sorted(numeros))
+
+
+class RecuPdfContenuTests(CaisseTestBase):
+    def _recu(self, versement_id):
+        response = self.client.get(reverse('versement-recu', args=[versement_id]))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        return extraire_texte_pdf(response)
+
+    def _verser(self, montant):
+        return self.client.post(reverse('versement-list'), {
+            'facture': self.facture.id, 'montant': montant,
+            'mode_paiement': Versement.ModePaiement.ORANGE_MONEY, 'reference_transaction': 'OM-778899',
+        })
+
+    def test_recu_montre_situation_du_compte(self):
+        premier = self._verser('400000')
+        second = self._verser('250000')
+        texte = self._recu(second.data['id'])
+        for attendu in [
+            second.data['numero_recu'], 'Jean Client', self.facture.numero_facture, 'SN-A-0001',
+            'BON-A-001', 'OM-778899', '1 000 000 F', '400 000 F', '250 000 F', '350 000 F',
+            'deux cent cinquante mille francs CFA',
+        ]:
+            self.assertIn(attendu, texte)
+        self.assertNotIn('SOLD', texte)
+        self.assertIn(premier.data['numero_recu'], self._recu(premier.data['id']))
+
+    def test_recu_solde_affiche_le_tampon(self):
+        creation = self._verser('1000000')
+        texte = self._recu(creation.data['id'])
+        self.assertIn('SOLD', texte)
+        self.assertIn('un million de francs CFA', texte)
+
+    def test_recu_annule_affiche_le_filigrane(self):
+        creation = self._verser('300000')
+        self.client.post(reverse('versement-annuler', args=[creation.data['id']]))
+        self.assertIn('ANNUL', self._recu(creation.data['id']))
+
+    def test_recu_facture_sans_moto(self):
+        from facturation.models import LigneFacture
+        facture = Facture.objects.create(
+            numero_facture='F-SANS-MOTO', agence=self.agence_a, client=self.client_a, cree_par=self.gerant_a,
+        )
+        LigneFacture.objects.create(facture=facture, designation='Casque', quantite=1, prix_unitaire=20000)
+        creation = self.client.post(reverse('versement-list'), {
+            'facture': facture.id, 'montant': '5000', 'mode_paiement': Versement.ModePaiement.ESPECES,
+        })
+        texte = self._recu(creation.data['id'])
+        self.assertIn('F-SANS-MOTO', texte)
+        self.assertNotIn('arrivage', texte)
+
+    def test_recu_ancien_versement_sans_numero(self):
+        versement = Versement.objects.create(
+            facture=self.facture, agence=self.agence_a, montant='1000',
+            mode_paiement='especes', cree_par=self.gerant_a,
+        )
+        self.assertIn('DE VERSEMENT', self._recu(versement.id))

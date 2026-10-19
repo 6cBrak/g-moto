@@ -1,6 +1,7 @@
 from decimal import ROUND_HALF_UP, Decimal
 
 from reportlab.lib.units import mm
+from reportlab.pdfbase.pdfmetrics import stringWidth
 
 UNITES = [
     'zéro', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix',
@@ -67,19 +68,46 @@ def montant_en_lettres(montant):
     return f"{lettres} {'franc' if n <= 1 else 'francs'} CFA"
 
 
-def dessiner_entete(doc, agence, y, width):
+def formater_montant(valeur):
+    """1500000 -> '1 500 000 F'."""
+    return f"{Decimal(valeur):,.0f}".replace(',', ' ') + ' F'
+
+
+def tronquer(texte, police, taille, largeur):
+    if stringWidth(texte, police, taille) <= largeur:
+        return texte
+    while texte and stringWidth(texte + '...', police, taille) > largeur:
+        texte = texte[:-1]
+    return texte + '...'
+
+
+def dessiner_champ(doc, label, valeur, x, y, x_fin, police_label, police_valeur):
+    """Dessine `LABEL : valeur` suivi d'une ligne pointillee jusqu'a x_fin."""
+    doc.setFont(*police_label)
+    doc.drawString(x, y, label)
+    x_valeur = x + stringWidth(label, *police_label) + 2 * mm
+    if valeur:
+        doc.setFont(*police_valeur)
+        doc.drawString(x_valeur, y, tronquer(str(valeur), *police_valeur, x_fin - x_valeur))
+    doc.setLineWidth(0.4)
+    doc.setDash(1, 2)
+    doc.line(x_valeur, y - 1 * mm, x_fin, y - 1 * mm)
+    doc.setDash()
+
+
+def dessiner_entete(doc, agence, y, width, marge=20 * mm):
     """Dessine le logo et les coordonnees de l'agence en haut d'un PDF reportlab.
 
     Retourne le y sous l'entete (avec une ligne de separation), pret pour le contenu suivant.
     """
-    x_texte = 20 * mm
+    x_texte = marge
     if agence.logo:
         try:
             doc.drawImage(
-                agence.logo.path, 20 * mm, y - 18 * mm, width=18 * mm, height=18 * mm,
+                agence.logo.path, marge, y - 18 * mm, width=18 * mm, height=18 * mm,
                 preserveAspectRatio=True, mask='auto',
             )
-            x_texte = 42 * mm
+            x_texte = marge + 22 * mm
         except (OSError, ValueError):
             pass
 
@@ -105,10 +133,10 @@ def dessiner_entete(doc, agence, y, width):
         lignes.append(agence.site_web)
 
     for ligne in lignes:
-        doc.drawString(x_texte, haut, ligne)
+        doc.drawString(x_texte, haut, tronquer(ligne, 'Helvetica', 9, width - marge - x_texte))
         haut -= 4.5 * mm
 
     bas_entete = min(haut, y - 20 * mm) - 3 * mm
     doc.setLineWidth(0.5)
-    doc.line(20 * mm, bas_entete, width - 20 * mm, bas_entete)
+    doc.line(marge, bas_entete, width - marge, bas_entete)
     return bas_entete - 8 * mm
