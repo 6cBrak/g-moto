@@ -323,6 +323,7 @@ export default function FactureDetailPage() {
             { key: 'moto_numero_serie', label: 'Moto', render: (r) => r.moto_numero_serie || r.modele_casque_nom || r.designation },
             { key: 'moto_type_label', label: 'Type', render: (r) => r.moto_type_label || '-' },
             { key: 'moto_couleur_nom', label: 'Couleur', render: (r) => r.moto_couleur_nom || '-' },
+            { key: 'moto_arrivage_numero_bon', label: "N° d'arrivage", render: (r) => r.moto_arrivage_numero_bon || '-' },
             { key: 'quantite', label: 'Qte' },
             { key: 'prix_unitaire', label: 'PU', render: (r) => `${formatMontant(r.prix_unitaire)} F` },
             { key: 'montant', label: 'Montant', render: (r) => `${formatMontant(r.montant)} F` },

@@ -21,6 +21,7 @@ from core.viewsets import AgenceScopedViewSet
 from stock.models import HistoriqueMoto, Moto
 
 from .models import CarteGrise, Client, Declaration, DepotVente, EnvoiDepot, Facture, Quittance
+from .pdf import generer_pdf_facture
 from .serializers import (
     CarteGriseSerializer,
     ClientSerializer,
@@ -321,50 +322,8 @@ class FactureViewSet(AgenceScopedViewSet):
     @action(detail=True, methods=['get'], url_path='pdf')
     def pdf(self, request, pk=None):
         facture = self.get_object()
-        buffer = BytesIO()
-        doc = canvas.Canvas(buffer, pagesize=A4)
-        width, height = A4
-
-        y = dessiner_entete(doc, facture.agence, height - 25 * mm, width)
-        doc.setFont('Helvetica-Bold', 16)
-        doc.drawString(20 * mm, y, f"Facture {facture.numero_facture}")
-        y -= 10 * mm
-
-        doc.setFont('Helvetica', 11)
-        doc.drawString(20 * mm, y, f"Client : {facture.client.nom}")
-        y -= 6 * mm
-        doc.drawString(20 * mm, y, f"Date : {facture.date_facture.strftime('%d/%m/%Y')}")
-        y -= 12 * mm
-
-        doc.setFont('Helvetica-Bold', 10)
-        doc.drawString(20 * mm, y, 'Designation')
-        doc.drawString(120 * mm, y, 'Qte')
-        doc.drawString(140 * mm, y, 'PU')
-        doc.drawString(165 * mm, y, 'Montant')
-        y -= 6 * mm
-        doc.setFont('Helvetica', 10)
-
-        for ligne in facture.lignes.all():
-            designation = ligne.designation
-            if ligne.moto:
-                designation = f"Moto {ligne.moto.numero_serie}"
-            elif ligne.modele_casque:
-                designation = f"Casque {ligne.modele_casque.nom}"
-            doc.drawString(20 * mm, y, designation[:60])
-            doc.drawString(120 * mm, y, str(ligne.quantite))
-            doc.drawString(140 * mm, y, f"{ligne.prix_unitaire:,.0f}")
-            doc.drawString(165 * mm, y, f"{ligne.montant:,.0f}")
-            y -= 6 * mm
-
-        y -= 6 * mm
-        doc.setFont('Helvetica-Bold', 12)
-        doc.drawString(120 * mm, y, f"Total : {facture.total:,.0f}")
-
-        doc.showPage()
-        doc.save()
-        buffer.seek(0)
         return FileResponse(
-            buffer, as_attachment=False, filename=f"{facture.numero_facture}.pdf",
+            generer_pdf_facture(facture), as_attachment=False, filename=f"{facture.numero_facture}.pdf",
         )
 
     @action(detail=True, methods=['get'], url_path='bordereau')

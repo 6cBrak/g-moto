@@ -47,6 +47,7 @@ class LigneFactureSerializer(serializers.ModelSerializer):
     moto_numero_serie = serializers.CharField(source='moto.numero_serie', read_only=True)
     moto_type_label = serializers.CharField(source='moto.type_moto.__str__', read_only=True)
     moto_couleur_nom = serializers.CharField(source='moto.couleur.nom', read_only=True)
+    moto_arrivage_numero_bon = serializers.CharField(source='moto.arrivage.numero_bon', read_only=True)
     modele_casque_nom = serializers.CharField(source='modele_casque.nom', read_only=True)
     arrivage_fichier_cmc = serializers.SerializerMethodField()
     carte_grise_id = serializers.SerializerMethodField()
@@ -55,7 +56,7 @@ class LigneFactureSerializer(serializers.ModelSerializer):
         model = LigneFacture
         fields = [
             'id', 'moto', 'moto_numero_serie', 'moto_type_label', 'moto_couleur_nom',
-            'modele_casque', 'modele_casque_nom', 'designation', 'quantite', 'prix_unitaire', 'montant',
+            'moto_arrivage_numero_bon', 'modele_casque', 'modele_casque_nom', 'designation', 'quantite', 'prix_unitaire', 'montant',
             'arrivage_fichier_cmc', 'avec_carte_grise', 'carte_grise_id',
         ]
         read_only_fields = ['id', 'montant']

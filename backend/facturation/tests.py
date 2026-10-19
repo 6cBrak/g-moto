@@ -491,3 +491,80 @@ class ClientRelancesTests(FacturationTestBase):
 
         response = self.client.get(reverse('client-relances'))
         self.assertEqual(len(response.data), 0)
+
+
+class MontantEnLettresTests(APITestCase):
+    def test_conversions(self):
+        from core.pdf_utils import montant_en_lettres
+        cas = {
+            0: 'zéro franc CFA',
+            1: 'un franc CFA',
+            21: 'vingt et un francs CFA',
+            71: 'soixante et onze francs CFA',
+            80: 'quatre-vingts francs CFA',
+            91: 'quatre-vingt-onze francs CFA',
+            200: 'deux cents francs CFA',
+            1000: 'mille francs CFA',
+            80000: 'quatre-vingt mille francs CFA',
+            200000: 'deux cent mille francs CFA',
+            1500000: 'un million cinq cent mille francs CFA',
+            2000000: 'deux millions de francs CFA',
+            1250000: 'un million deux cent cinquante mille francs CFA',
+            3280000: 'trois millions deux cent quatre-vingt mille francs CFA',
+        }
+        for valeur, attendu in cas.items():
+            self.assertEqual(montant_en_lettres(valeur), attendu, valeur)
+
+
+class FacturePdfContenuTests(FacturationTestBase):
+    def _texte_pdf(self, facture_id):
+        import re
+        import zlib
+        response = self.client.get(reverse('facture-pdf', args=[facture_id]))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        contenu = b''.join(response.streaming_content)
+        # reportlab compresse les flux en ASCII85+Flate
+        from base64 import a85decode
+        texte = ''
+        for flux in re.findall(rb'stream\r?\n(.*?)endstream', contenu, re.S):
+            try:
+                texte += zlib.decompress(a85decode(flux.strip(), adobe=True)).decode('latin-1')
+            except Exception:
+                continue
+        return texte
+
+    def test_pdf_contient_arrivage_adresse_et_montants(self):
+        from caisse.models import Versement
+        self.client_a.adresse = 'Secteur 15 Ouaga'
+        self.client_a.save()
+        self.client.force_authenticate(user=self.gerant_a)
+        creation = self.client.post(reverse('facture-list'), {
+            'client': self.client_a.id,
+            'lignes': [{'moto': self.moto_a.id, 'quantite': 1, 'prix_unitaire': '1500000'}],
+        }, format='json')
+        facture = Facture.objects.get(id=creation.data['id'])
+        Versement.objects.create(
+            facture=facture, agence=self.agence_a, montant='500000',
+            mode_paiement=Versement.ModePaiement.ESPECES, cree_par=self.gerant_a,
+        )
+        texte = self._texte_pdf(facture.id)
+        for attendu in ['BON-A-001', 'Secteur 15 Ouaga', 'SN-A-0001', '1 500 000 F', '500 000 F',
+                        '1 000 000 F', 'un million cinq cent mille francs CFA']:
+            self.assertIn(attendu, texte)
+
+    def test_pdf_facture_longue_multi_lignes_ne_plante_pas(self):
+        self.client.force_authenticate(user=self.gerant_a)
+        lignes = []
+        for i in range(12):
+            moto = Moto.objects.create(
+                numero_serie=f'SN-LONG-{i}', type_moto=self.type_moto, couleur=self.couleur,
+                arrivage=self.arrivage_a, agence=self.agence_a,
+            )
+            lignes.append({'moto': moto.id, 'quantite': 1, 'prix_unitaire': '1000000'})
+        creation = self.client.post(reverse('facture-list'), {
+            'client': self.client_a.id, 'lignes': lignes,
+        }, format='json')
+        self.assertEqual(creation.status_code, status.HTTP_201_CREATED, creation.data)
+        texte = self._texte_pdf(creation.data['id'])
+        self.assertIn('douze millions de francs CFA', texte)
+        self.assertIn('SN-LONG-11', texte)
